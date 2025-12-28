@@ -7,6 +7,9 @@ const LearningNoteForm = ({ initial, onSave, onDelete }) => {
   const [body, setBody] = useState(initial?.body || '');
   const [tags, setTags] = useState(initial?.tags || '');
   const [source, setSource] = useState(initial?.source || '');
+  const [qualityExample, setQualityExample] = useState(!!initial?.quality?.example);
+  const [qualityMnemonic, setQualityMnemonic] = useState(!!initial?.quality?.mnemonic);
+  const [qualityQuestion, setQualityQuestion] = useState(!!initial?.quality?.question);
 
   return (
     <div className="space-y-4">
@@ -54,6 +57,39 @@ const LearningNoteForm = ({ initial, onSave, onDelete }) => {
         />
       </div>
 
+      <div>
+        <label className="text-slate-400 text-sm mb-2 block">Quality prompts (optional)</label>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setQualityExample(prev => !prev)}
+            className={`px-3 py-2 rounded-lg border ${
+              qualityExample ? 'border-emerald-400 text-emerald-300' : 'border-slate-700 text-slate-400'
+            }`}
+          >
+            Example
+          </button>
+          <button
+            type="button"
+            onClick={() => setQualityMnemonic(prev => !prev)}
+            className={`px-3 py-2 rounded-lg border ${
+              qualityMnemonic ? 'border-emerald-400 text-emerald-300' : 'border-slate-700 text-slate-400'
+            }`}
+          >
+            Mnemonic
+          </button>
+          <button
+            type="button"
+            onClick={() => setQualityQuestion(prev => !prev)}
+            className={`px-3 py-2 rounded-lg border ${
+              qualityQuestion ? 'border-emerald-400 text-emerald-300' : 'border-slate-700 text-slate-400'
+            }`}
+          >
+            Question
+          </button>
+        </div>
+      </div>
+
       <div className="flex gap-3">
         {onDelete && (
           <Button variant="danger" onClick={onDelete} className="flex-1">
@@ -62,7 +98,17 @@ const LearningNoteForm = ({ initial, onSave, onDelete }) => {
         )}
         <Button
           className="flex-1"
-          onClick={() => title && body && onSave({ title, body, tags, source })}
+          onClick={() => title && body && onSave({
+            title,
+            body,
+            tags,
+            source,
+            quality: {
+              example: qualityExample,
+              mnemonic: qualityMnemonic,
+              question: qualityQuestion
+            }
+          })}
           disabled={!title || !body}
         >
           Save

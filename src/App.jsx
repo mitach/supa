@@ -233,7 +233,7 @@ export default function App() {
       case 'money': return <MoneyPage {...props} />;
       case 'journal': return <JournalPage {...props} />;
       case 'library': return <LibraryPage {...props} />;
-      case 'learning': return <LearningPage {...props} />;
+      case 'learning': return <LearningPage {...props} journals={journals} />;
       case 'analytics': return <AnalyticsPage {...props} library={library} />;
       case 'review': return (
         <ReviewPage
