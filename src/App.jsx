@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, Icons, Modal } from './components';
-import { usePersistedState } from './hooks/usePersistedState';
+import { Button, Card, Icons, Modal } from './components';
 import AnalyticsPage from './pages/AnalyticsPage';
 import JournalPage from './pages/JournalPage';
 import LearningPage from './pages/LearningPage';
@@ -11,10 +10,54 @@ import MoneyPage from './pages/MoneyPage';
 import ReviewPage from './pages/ReviewPage';
 import SettingsPage from './pages/SettingsPage';
 import TodayPage from './pages/TodayPage';
-import { STORAGE_KEYS } from './storage';
+import { supabase } from './lib/supabaseClient';
+
+const defaultState = {
+  metrics: {},
+  habits: {},
+  journals: {},
+  transactions: [],
+  library: [],
+  readingSessions: [],
+  mediaSessions: [],
+  learningNotes: [],
+  srsState: {},
+  goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
+  focusHabit: 'workout',
+  onboardingComplete: false,
+  focusAlertLast: ''
+};
 
 export default function App() {
   const [page, setPage] = useState('today');
+
+  const [metrics, setMetrics] = useState(defaultState.metrics);
+  const [habits, setHabits] = useState(defaultState.habits);
+  const [journals, setJournals] = useState(defaultState.journals);
+  const [transactions, setTransactions] = useState(defaultState.transactions);
+  const [library, setLibrary] = useState(defaultState.library);
+  const [readingSessions, setReadingSessions] = useState(defaultState.readingSessions);
+  const [mediaSessions, setMediaSessions] = useState(defaultState.mediaSessions);
+  const [learningNotes, setLearningNotes] = useState(defaultState.learningNotes);
+  const [srsState, setSrsState] = useState(defaultState.srsState);
+  const [goals, setGoals] = useState(defaultState.goals);
+  const [focusHabit, setFocusHabit] = useState(defaultState.focusHabit);
+  const [onboardingComplete, setOnboardingComplete] = useState(defaultState.onboardingComplete);
+  const [focusAlertLast, setFocusAlertLast] = useState(defaultState.focusAlertLast);
+
+  const [onboardingGoals, setOnboardingGoals] = useState(defaultState.goals);
+  const [onboardingFocus, setOnboardingFocus] = useState(defaultState.focusHabit);
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState('signin');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [syncStatus, setSyncStatus] = useState('idle');
+
+  const hasHydratedRef = useRef(false);
+  const saveTimeoutRef = useRef(null);
 
   useEffect(() => {
     const handleNavigate = (e) => setPage(e.detail);
@@ -22,23 +65,128 @@ export default function App() {
     return () => window.removeEventListener('navigate', handleNavigate);
   }, []);
 
-  const [metrics, setMetrics] = usePersistedState(STORAGE_KEYS.metrics, {});
-  const [habits, setHabits] = usePersistedState(STORAGE_KEYS.habits, {});
-  const [journals, setJournals] = usePersistedState(STORAGE_KEYS.journals, {});
-  const [transactions, setTransactions] = usePersistedState(STORAGE_KEYS.transactions, []);
-  const [library, setLibrary] = usePersistedState(STORAGE_KEYS.library, []);
-  const [readingSessions, setReadingSessions] = usePersistedState(STORAGE_KEYS.readingSessions, []);
-  const [mediaSessions, setMediaSessions] = usePersistedState(STORAGE_KEYS.mediaSessions, []);
-  const [learningNotes, setLearningNotes] = usePersistedState(STORAGE_KEYS.learningNotes, []);
-  const [srsState, setSrsState] = usePersistedState(STORAGE_KEYS.srsState, {});
-  const [goals, setGoals] = usePersistedState(
-    STORAGE_KEYS.goals,
-    { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 }
-  );
-  const [focusHabit, setFocusHabit] = usePersistedState(STORAGE_KEYS.focusHabit, 'workout');
-  const [onboardingComplete, setOnboardingComplete] = usePersistedState(STORAGE_KEYS.onboardingComplete, false);
-  const [onboardingGoals, setOnboardingGoals] = useState(goals);
-  const [onboardingFocus, setOnboardingFocus] = useState(focusHabit || 'workout');
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+      setUser(data.session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    return () => {
+      isMounted = false;
+      listener?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  const applyRemoteState = (data) => {
+    const merged = { ...defaultState, ...data };
+    setMetrics(merged.metrics || {});
+    setHabits(merged.habits || {});
+    setJournals(merged.journals || {});
+    setTransactions(merged.transactions || []);
+    setLibrary(merged.library || []);
+    setReadingSessions(merged.readingSessions || []);
+    setMediaSessions(merged.mediaSessions || []);
+    setLearningNotes(merged.learningNotes || []);
+    setSrsState(merged.srsState || {});
+    setGoals(merged.goals || defaultState.goals);
+    setFocusHabit(merged.focusHabit || defaultState.focusHabit);
+    setOnboardingComplete(Boolean(merged.onboardingComplete));
+    setFocusAlertLast(merged.focusAlertLast || '');
+    setOnboardingGoals(merged.goals || defaultState.goals);
+    setOnboardingFocus(merged.focusHabit || defaultState.focusHabit);
+  };
+
+  useEffect(() => {
+    const loadState = async () => {
+      if (!user) {
+        hasHydratedRef.current = false;
+        return;
+      }
+      setSyncStatus('loading');
+      const { data, error } = await supabase
+        .from('user_state')
+        .select('data')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        setSyncStatus('error');
+        return;
+      }
+
+      if (data?.data) {
+        applyRemoteState(data.data);
+      } else {
+        await supabase.from('user_state').upsert({
+          user_id: user.id,
+          data: defaultState,
+          updated_at: new Date().toISOString()
+        });
+        applyRemoteState(defaultState);
+      }
+
+      hasHydratedRef.current = true;
+      setSyncStatus('idle');
+    };
+
+    loadState();
+  }, [user]);
+
+  const combinedState = useMemo(() => ({
+    metrics,
+    habits,
+    journals,
+    transactions,
+    library,
+    readingSessions,
+    mediaSessions,
+    learningNotes,
+    srsState,
+    goals,
+    focusHabit,
+    onboardingComplete,
+    focusAlertLast
+  }), [
+    metrics,
+    habits,
+    journals,
+    transactions,
+    library,
+    readingSessions,
+    mediaSessions,
+    learningNotes,
+    srsState,
+    goals,
+    focusHabit,
+    onboardingComplete,
+    focusAlertLast
+  ]);
+
+  useEffect(() => {
+    if (!user || !hasHydratedRef.current) return;
+    setSyncStatus('saving');
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(async () => {
+      await supabase.from('user_state').upsert({
+        user_id: user.id,
+        data: combinedState,
+        updated_at: new Date().toISOString()
+      });
+      setSyncStatus('idle');
+    }, 800);
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [combinedState, user]);
 
   const navItems = [
     { id: 'today', icon: <Icons.Home />, label: 'Today' },
@@ -64,7 +212,8 @@ export default function App() {
       learningNotes, setLearningNotes,
       srsState, setSrsState,
       goals, setGoals,
-      focusHabit, setFocusHabit
+      focusHabit, setFocusHabit,
+      focusAlertLast, setFocusAlertLast
     };
 
     switch (page) {
@@ -85,7 +234,7 @@ export default function App() {
       case 'journal': return <JournalPage {...props} />;
       case 'library': return <LibraryPage {...props} />;
       case 'learning': return <LearningPage {...props} />;
-      case 'analytics': return <AnalyticsPage {...props} />;
+      case 'analytics': return <AnalyticsPage {...props} library={library} />;
       case 'review': return (
         <ReviewPage
           metrics={metrics}
@@ -97,10 +246,87 @@ export default function App() {
           focusHabit={focusHabit}
         />
       );
-      case 'settings': return <SettingsPage {...props} />;
+      case 'settings': return (
+        <SettingsPage
+          {...props}
+          mediaSessions={mediaSessions}
+          setMediaSessions={setMediaSessions}
+          setOnboardingComplete={setOnboardingComplete}
+          onSignOut={async () => {
+            await supabase.auth.signOut();
+            setUser(null);
+          }}
+        />
+      );
       default: return <TodayPage {...props} />;
     }
   };
+
+  const handleAuth = async () => {
+    setAuthError('');
+    if (!authEmail || !authPassword) {
+      setAuthError('Email and password are required.');
+      return;
+    }
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+      if (error) {
+        setAuthError(error.message);
+      }
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+    if (error) {
+      setAuthError(error.message);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
+        <Card className="p-6 w-full max-w-sm">
+          <h1 className="text-xl font-bold text-white mb-2">Welcome</h1>
+          <p className="text-slate-400 text-sm mb-4">Sign in to sync your progress.</p>
+          <div className="space-y-3">
+            <input
+              type="email"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              placeholder="Email"
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+            <input
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+            {authError && (
+              <div className="text-red-400 text-sm">{authError}</div>
+            )}
+            <Button className="w-full" onClick={handleAuth}>
+              {authMode === 'signup' ? 'Create Account' : 'Sign In'}
+            </Button>
+            <button
+              className="text-slate-400 text-sm w-full"
+              onClick={() => setAuthMode(prev => prev === 'signup' ? 'signin' : 'signup')}
+            >
+              {authMode === 'signup' ? 'Have an account? Sign in' : 'New here? Create an account'}
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -110,6 +336,10 @@ export default function App() {
       <main className="relative max-w-lg mx-auto px-4 py-6">
         {renderPage()}
       </main>
+
+      <div className="fixed top-3 right-4 text-xs text-slate-500">
+        {syncStatus === 'saving' ? 'Saving...' : syncStatus === 'error' ? 'Sync error' : 'Synced'}
+      </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 safe-area-pb">
         <div className="max-w-lg mx-auto px-2">

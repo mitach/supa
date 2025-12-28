@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { Button, Card } from '../components';
-import { STORAGE_KEYS, saveData } from '../storage';
 import { getToday } from '../utils';
 
 const SettingsPage = ({
@@ -12,10 +11,24 @@ const SettingsPage = ({
   journals,
   transactions,
   library,
+  readingSessions,
+  setReadingSessions,
   learningNotes,
+  setLearningNotes,
+  srsState,
+  setSrsState,
   mediaSessions,
+  setMediaSessions,
   focusHabit,
-  setFocusHabit
+  setFocusHabit,
+  setMetrics,
+  setHabits,
+  setJournals,
+  setTransactions,
+  setLibrary,
+  setOnboardingComplete,
+  setFocusAlertLast,
+  onSignOut
 }) => {
   const [localGoals, setLocalGoals] = useState(goals);
   const habitOptions = [
@@ -36,9 +49,14 @@ const SettingsPage = ({
       journals,
       transactions,
       library,
+      readingSessions,
       learningNotes,
+      srsState,
       mediaSessions,
-      goals
+      goals,
+      focusHabit,
+      focusAlertLast: '',
+      onboardingComplete: true
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -58,15 +76,19 @@ const SettingsPage = ({
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target.result);
-        if (data.metrics) saveData(STORAGE_KEYS.metrics, data.metrics);
-        if (data.habits) saveData(STORAGE_KEYS.habits, data.habits);
-        if (data.journals) saveData(STORAGE_KEYS.journals, data.journals);
-        if (data.transactions) saveData(STORAGE_KEYS.transactions, data.transactions);
-        if (data.library) saveData(STORAGE_KEYS.library, data.library);
-        if (data.learningNotes) saveData(STORAGE_KEYS.learningNotes, data.learningNotes);
-        if (data.goals) saveData(STORAGE_KEYS.goals, data.goals);
-        if (data.mediaSessions) saveData(STORAGE_KEYS.mediaSessions, data.mediaSessions);
-        window.location.reload();
+        if (data.metrics) setMetrics(data.metrics);
+        if (data.habits) setHabits(data.habits);
+        if (data.journals) setJournals(data.journals);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.library) setLibrary(data.library);
+        if (data.readingSessions) setReadingSessions(data.readingSessions);
+        if (data.learningNotes) setLearningNotes(data.learningNotes);
+        if (data.srsState) setSrsState(data.srsState);
+        if (data.goals) setGoals(data.goals);
+        if (data.mediaSessions) setMediaSessions(data.mediaSessions);
+        if (data.focusHabit) setFocusHabit(data.focusHabit);
+        if (data.focusAlertLast) setFocusAlertLast(data.focusAlertLast);
+        setOnboardingComplete(true);
       } catch {
         alert('Error importing data. Please check the file format.');
       }
@@ -206,6 +228,13 @@ const SettingsPage = ({
             <span className="text-white ml-2">{mediaSessions.length}</span>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold text-white mb-4">Account</h3>
+        <Button variant="secondary" className="w-full" onClick={onSignOut}>
+          Sign Out
+        </Button>
       </Card>
 
       <div className="text-center text-slate-600 text-sm pt-4">

@@ -13,7 +13,6 @@ import {
   TransactionForm
 } from '../components';
 import { calculateDailyScore, calculateStreak, generateId, getDaysAgo, getToday } from '../utils';
-import { STORAGE_KEYS } from '../storage';
 
 const TodayPage = ({
   metrics, setMetrics,
@@ -23,7 +22,9 @@ const TodayPage = ({
   readingSessions, setReadingSessions,
   library,
   goals,
-  focusHabit
+  focusHabit,
+  focusAlertLast,
+  setFocusAlertLast
 }) => {
   const today = getToday();
   const todayMetrics = metrics[today] || {};
@@ -74,13 +75,12 @@ const TodayPage = ({
       setShowFocusAlert(false);
       return;
     }
-    const lastAlert = localStorage.getItem(STORAGE_KEYS.focusAlertLast);
-    if (lastAlert === today) {
+    if (focusAlertLast === today) {
       setShowFocusAlert(false);
       return;
     }
     setShowFocusAlert(true);
-  }, [focusHabit, habits, today]);
+  }, [focusHabit, habits, today, focusAlertLast]);
 
   const noFapStreak = calculateStreak(habits, 'nofap');
   const workoutStreak = calculateStreak(habits, 'workout');
@@ -192,7 +192,7 @@ const TodayPage = ({
             <button
               className="text-slate-400 hover:text-white text-sm"
               onClick={() => {
-                localStorage.setItem(STORAGE_KEYS.focusAlertLast, today);
+                setFocusAlertLast(today);
                 setShowFocusAlert(false);
               }}
             >
