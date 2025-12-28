@@ -1,13 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Card, Icons } from '../components';
+import { Button, Card, HabitToggle, Icons, MetricInput } from '../components';
 import { calculateDailyScore, getDaysAgo, getToday } from '../utils';
 
-const LogPage = ({ metrics, habits, journals, setJournals, goals }) => {
+const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals, goals }) => {
   const [selectedDate, setSelectedDate] = useState(getToday());
+  const [editMode, setEditMode] = useState(false);
   const dayMetrics = metrics[selectedDate] || {};
   const dayHabits = habits[selectedDate] || {};
   const dayJournal = journals[selectedDate] || {};
+  const [editMetrics, setEditMetrics] = useState(dayMetrics);
+  const [editHabits, setEditHabits] = useState(dayHabits);
+  const [editJournal, setEditJournal] = useState({
+    text: dayJournal.text || '',
+    til: dayJournal.til || '',
+    avoided: dayJournal.avoided || ''
+  });
+
+  useEffect(() => {
+    setEditMode(false);
+    setEditMetrics(dayMetrics);
+    setEditHabits(dayHabits);
+    setEditJournal({
+      text: dayJournal.text || '',
+      til: dayJournal.til || '',
+      avoided: dayJournal.avoided || ''
+    });
+  }, [selectedDate, metrics, habits, journals]);
 
   const dayScore = useMemo(() => {
     return calculateDailyScore(dayMetrics, dayHabits, goals, dayJournal);
@@ -31,6 +50,55 @@ const LogPage = ({ metrics, habits, journals, setJournals, goals }) => {
     const j = journals[date] || {};
     if (!metrics[date] && !habits[date]) return null;
     return calculateDailyScore(m, h, goals, j).score;
+  };
+
+  const saveEdits = () => {
+    const cleanedMetrics = Object.fromEntries(
+      Object.entries(editMetrics || {}).filter(([, value]) => value !== null && value !== '' && value !== undefined)
+    );
+    if (!editHabits?.run) {
+      delete cleanedMetrics.runDistance;
+    }
+    const cleanedHabits = Object.fromEntries(
+      Object.entries(editHabits || {}).filter(([, value]) => value === true)
+    );
+    const journalText = `${editJournal.text || ''}${editJournal.til || ''}${editJournal.avoided || ''}`;
+    const hasJournal = journalText.trim().length > 0;
+    const cleanedJournal = hasJournal
+      ? { text: editJournal.text, til: editJournal.til, avoided: editJournal.avoided }
+      : null;
+
+    setMetrics(prev => {
+      const next = { ...prev };
+      if (Object.keys(cleanedMetrics).length > 0) {
+        next[selectedDate] = cleanedMetrics;
+      } else {
+        delete next[selectedDate];
+      }
+      return next;
+    });
+
+    setHabits(prev => {
+      const next = { ...prev };
+      if (Object.keys(cleanedHabits).length > 0) {
+        next[selectedDate] = cleanedHabits;
+      } else {
+        delete next[selectedDate];
+      }
+      return next;
+    });
+
+    setJournals(prev => {
+      const next = { ...prev };
+      if (cleanedJournal) {
+        next[selectedDate] = cleanedJournal;
+      } else {
+        delete next[selectedDate];
+      }
+      return next;
+    });
+
+    setEditMode(false);
   };
 
   return (
@@ -85,81 +153,226 @@ const LogPage = ({ metrics, habits, journals, setJournals, goals }) => {
               day: 'numeric'
             })}
           </h3>
-          {hasData(selectedDate) && (
-            <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-              dayScore.score >= 70 ? 'bg-emerald-500/20 text-emerald-400' :
-              dayScore.score >= 50 ? 'bg-amber-500/20 text-amber-400' :
-              'bg-slate-700 text-slate-400'
-            }`}>
-              {dayScore.score} pts
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {[
-            { key: 'steps', label: 'Steps', icon: <Icons.Activity /> },
-            { key: 'water', label: 'Water', unit: 'L', icon: <Icons.Droplet /> },
-            { key: 'sleep', label: 'Sleep', unit: 'h', icon: <Icons.Moon /> },
-            { key: 'pages', label: 'Pages', icon: <Icons.Book /> },
-            { key: 'pushups', label: 'Push-ups', icon: <Icons.Dumbbell /> },
-          ].map(({ key, label, unit, icon }) => (
-            <div key={key} className="bg-slate-900/50 rounded-xl p-3">
-              <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
-                {icon} {label}
+          <div className="flex items-center gap-2">
+            {hasData(selectedDate) && (
+              <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                dayScore.score >= 70 ? 'bg-emerald-500/20 text-emerald-400' :
+                dayScore.score >= 50 ? 'bg-amber-500/20 text-amber-400' :
+                'bg-slate-700 text-slate-400'
+              }`}>
+                {dayScore.score} pts
               </div>
-              <div className="text-xl font-bold text-white">
-                {dayMetrics[key] ?? 'n/a'}{unit && dayMetrics[key] ? unit : ''}
+            )}
+            <Button
+              variant={editMode ? 'secondary' : 'ghost'}
+              className="px-3 py-2"
+              onClick={() => setEditMode(prev => !prev)}
+            >
+              {editMode ? 'Cancel' : 'Edit'}
+            </Button>
+          </div>
+        </div>
+
+        {!editMode && (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { key: 'steps', label: 'Steps', icon: <Icons.Activity /> },
+                { key: 'water', label: 'Water', unit: 'L', icon: <Icons.Droplet /> },
+                { key: 'sleep', label: 'Sleep', unit: 'h', icon: <Icons.Moon /> },
+                { key: 'pages', label: 'Pages', icon: <Icons.Book /> },
+                { key: 'pushups', label: 'Push-ups', icon: <Icons.Dumbbell /> },
+              ].map(({ key, label, unit, icon }) => (
+                <div key={key} className="bg-slate-900/50 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
+                    {icon} {label}
+                  </div>
+                  <div className="text-xl font-bold text-white">
+                    {dayMetrics[key] ?? 'n/a'}{unit && dayMetrics[key] ? unit : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {[
+                { key: 'nofap', label: 'NoFap' },
+                { key: 'workout', label: 'Workout' },
+                { key: 'run', label: 'Run' },
+                { key: 'keptWord', label: 'Kept Word' },
+                { key: 'hardThing', label: 'Hard Thing' },
+                { key: 'integrity', label: 'Integrity' },
+                { key: 'healthyEating', label: 'Ate healthy (no sugar)' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
+                  <span className="text-slate-300">{label}</span>
+                  <span className={dayHabits[key] ? 'text-emerald-400' : 'text-slate-600'}>
+                    {dayHabits[key]
+                      ? key === 'run' && dayMetrics.runDistance
+                        ? `Yes (${dayMetrics.runDistance} km)`
+                        : 'Yes'
+                      : 'No'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {dayJournal.text && (
+              <div className="bg-slate-900/50 rounded-xl p-4 mb-3">
+                <div className="text-slate-400 text-sm mb-2">Journal</div>
+                <p className="text-white">{dayJournal.text}</p>
+              </div>
+            )}
+            {dayJournal.til && (
+              <div className="bg-slate-900/50 rounded-xl p-4 mb-3">
+                <div className="text-slate-400 text-sm mb-2">Learned</div>
+                <p className="text-white">{dayJournal.til}</p>
+              </div>
+            )}
+            {dayJournal.avoided && (
+              <div className="bg-slate-900/50 rounded-xl p-4">
+                <div className="text-slate-400 text-sm mb-2">Avoided</div>
+                <p className="text-white">{dayJournal.avoided}</p>
+              </div>
+            )}
+
+            {!hasData(selectedDate) && (
+              <div className="text-center py-8 text-slate-500">
+                No data logged for this day
+              </div>
+            )}
+          </>
+        )}
+
+        {editMode && (
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Metrics</h4>
+              <div className="grid gap-3">
+                <MetricInput
+                  label="Steps"
+                  value={editMetrics.steps}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, steps: v }))}
+                  placeholder="0"
+                />
+                <MetricInput
+                  label="Water"
+                  value={editMetrics.water}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, water: v }))}
+                  placeholder="0"
+                  unit="L"
+                />
+                <MetricInput
+                  label="Sleep"
+                  value={editMetrics.sleep}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, sleep: v }))}
+                  placeholder="0"
+                  unit="hours"
+                />
+                <MetricInput
+                  label="Pages Read"
+                  value={editMetrics.pages}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, pages: v }))}
+                  placeholder="0"
+                />
+                <MetricInput
+                  label="Push-ups"
+                  value={editMetrics.pushups}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, pushups: v }))}
+                  placeholder="0"
+                />
               </div>
             </div>
-          ))}
-        </div>
 
-        <div className="space-y-2 mb-4">
-          {[
-            { key: 'nofap', label: 'NoFap' },
-            { key: 'workout', label: 'Workout' },
-            { key: 'run', label: 'Run' },
-            { key: 'keptWord', label: 'Kept Word' },
-            { key: 'hardThing', label: 'Hard Thing' },
-            { key: 'integrity', label: 'Integrity' },
-            { key: 'healthyEating', label: 'Ate healthy (no sugar)' },
-          ].map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
-              <span className="text-slate-300">{label}</span>
-              <span className={dayHabits[key] ? 'text-emerald-400' : 'text-slate-600'}>
-                {dayHabits[key]
-                  ? key === 'run' && dayMetrics.runDistance
-                    ? `Yes (${dayMetrics.runDistance} km)`
-                    : 'Yes'
-                  : 'No'}
-              </span>
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Discipline</h4>
+              <div className="space-y-2">
+                <HabitToggle
+                  label="NoFap - Clean today"
+                  value={editHabits.nofap}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, nofap: v }))}
+                />
+                <HabitToggle
+                  label="Workout"
+                  value={editHabits.workout}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, workout: v }))}
+                />
+                <HabitToggle
+                  label="Run"
+                  value={editHabits.run}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, run: v }))}
+                />
+                {editHabits.run && (
+                  <MetricInput
+                    label="Run Distance"
+                    value={editMetrics.runDistance}
+                    onChange={(v) => setEditMetrics(prev => ({ ...prev, runDistance: v }))}
+                    placeholder="0"
+                    unit="km"
+                  />
+                )}
+                <HabitToggle
+                  label="Kept my word"
+                  value={editHabits.keptWord}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, keptWord: v }))}
+                />
+                <HabitToggle
+                  label="Did a hard thing voluntarily"
+                  value={editHabits.hardThing}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, hardThing: v }))}
+                />
+                <HabitToggle
+                  label="Acted with integrity"
+                  value={editHabits.integrity}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, integrity: v }))}
+                />
+                <HabitToggle
+                  label="Ate healthy (no sugar)"
+                  value={editHabits.healthyEating}
+                  onChange={(v) => setEditHabits(prev => ({ ...prev, healthyEating: v }))}
+                />
+              </div>
             </div>
-          ))}
-        </div>
 
-        {dayJournal.text && (
-          <div className="bg-slate-900/50 rounded-xl p-4 mb-3">
-            <div className="text-slate-400 text-sm mb-2">Journal</div>
-            <p className="text-white">{dayJournal.text}</p>
-          </div>
-        )}
-        {dayJournal.til && (
-          <div className="bg-slate-900/50 rounded-xl p-4 mb-3">
-            <div className="text-slate-400 text-sm mb-2">Learned</div>
-            <p className="text-white">{dayJournal.til}</p>
-          </div>
-        )}
-        {dayJournal.avoided && (
-          <div className="bg-slate-900/50 rounded-xl p-4">
-            <div className="text-slate-400 text-sm mb-2">Avoided</div>
-            <p className="text-white">{dayJournal.avoided}</p>
-          </div>
-        )}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Journal</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-slate-400 text-sm mb-2 block">Journal</label>
+                  <textarea
+                    value={editJournal.text}
+                    onChange={(e) => setEditJournal(prev => ({ ...prev, text: e.target.value }))}
+                    placeholder="Journal entry..."
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 text-sm mb-2 block">Today I Learned</label>
+                  <textarea
+                    value={editJournal.til}
+                    onChange={(e) => setEditJournal(prev => ({ ...prev, til: e.target.value }))}
+                    placeholder="What did you learn?"
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 text-sm mb-2 block">Avoided something important?</label>
+                  <textarea
+                    value={editJournal.avoided}
+                    onChange={(e) => setEditJournal(prev => ({ ...prev, avoided: e.target.value }))}
+                    placeholder="What did you avoid?"
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
 
-        {!hasData(selectedDate) && (
-          <div className="text-center py-8 text-slate-500">
-            No data logged for this day
+            <Button className="w-full" onClick={saveEdits}>
+              Save Changes
+            </Button>
           </div>
         )}
       </Card>

@@ -62,7 +62,17 @@ export default function App() {
 
     switch (page) {
       case 'today': return <TodayPage {...props} />;
-      case 'log': return <LogPage metrics={metrics} habits={habits} journals={journals} setJournals={setJournals} goals={goals} />;
+      case 'log': return (
+        <LogPage
+          metrics={metrics}
+          setMetrics={setMetrics}
+          habits={habits}
+          setHabits={setHabits}
+          journals={journals}
+          setJournals={setJournals}
+          goals={goals}
+        />
+      );
       case 'money': return <MoneyPage {...props} />;
       case 'journal': return <JournalPage {...props} />;
       case 'library': return <LibraryPage {...props} />;
