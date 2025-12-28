@@ -4,8 +4,28 @@ import { Button, Card } from '../components';
 import { STORAGE_KEYS, saveData } from '../storage';
 import { getToday } from '../utils';
 
-const SettingsPage = ({ goals, setGoals, metrics, habits, journals, transactions, library, learningNotes }) => {
+const SettingsPage = ({
+  goals,
+  setGoals,
+  metrics,
+  habits,
+  journals,
+  transactions,
+  library,
+  learningNotes,
+  focusHabit,
+  setFocusHabit
+}) => {
   const [localGoals, setLocalGoals] = useState(goals);
+  const habitOptions = [
+    { value: 'nofap', label: 'NoFap' },
+    { value: 'workout', label: 'Workout' },
+    { value: 'run', label: 'Run' },
+    { value: 'keptWord', label: 'Kept my word' },
+    { value: 'hardThing', label: 'Did a hard thing' },
+    { value: 'integrity', label: 'Acted with integrity' },
+    { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
+  ];
 
   const handleExport = () => {
     const data = {
@@ -117,6 +137,22 @@ const SettingsPage = ({ goals, setGoals, metrics, habits, journals, transactions
             Save Goals
           </Button>
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold text-white mb-4">Weekly Focus</h3>
+        <p className="text-slate-400 text-sm mb-4">Highlight one habit to prioritize this week</p>
+        <select
+          value={focusHabit || ''}
+          onChange={(e) => setFocusHabit(e.target.value)}
+          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+        >
+          {habitOptions.map((habit) => (
+            <option key={habit.value} value={habit.value}>
+              {habit.label}
+            </option>
+          ))}
+        </select>
       </Card>
 
       <Card className="p-4">

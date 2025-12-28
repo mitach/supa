@@ -34,6 +34,7 @@ export default function App() {
     STORAGE_KEYS.goals,
     { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 }
   );
+  const [focusHabit, setFocusHabit] = usePersistedState(STORAGE_KEYS.focusHabit, 'workout');
 
   const navItems = [
     { id: 'today', icon: <Icons.Home />, label: 'Today' },
@@ -57,7 +58,8 @@ export default function App() {
       readingSessions, setReadingSessions,
       learningNotes, setLearningNotes,
       srsState, setSrsState,
-      goals, setGoals
+      goals, setGoals,
+      focusHabit, setFocusHabit
     };
 
     switch (page) {

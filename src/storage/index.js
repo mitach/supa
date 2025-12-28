@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   learningNotes: 'progress_learning_notes',
   srsState: 'progress_srs_state',
   reviews: 'progress_reviews',
-  goals: 'progress_goals'
+  goals: 'progress_goals',
+  focusHabit: 'progress_focus_habit'
 };
 
 const loadData = (key) => {

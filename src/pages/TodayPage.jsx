@@ -21,7 +21,8 @@ const TodayPage = ({
   transactions, setTransactions,
   readingSessions, setReadingSessions,
   library,
-  goals
+  goals,
+  focusHabit
 }) => {
   const today = getToday();
   const todayMetrics = metrics[today] || {};
@@ -258,23 +259,31 @@ const TodayPage = ({
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Discipline</h2>
+        {focusHabit && (
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs rounded-xl px-3 py-2">
+            Weekly focus: {focusHabit.replace(/([A-Z])/g, ' $1').trim()}
+          </div>
+        )}
         <div className="space-y-2">
           <HabitToggle
             label="NoFap - Clean today"
             value={todayHabits.nofap}
             onChange={(v) => updateHabit('nofap', v)}
             streak={noFapStreak}
+            isFocus={focusHabit === 'nofap'}
           />
           <HabitToggle
             label="Workout"
             value={todayHabits.workout}
             onChange={(v) => updateHabit('workout', v)}
             streak={workoutStreak}
+            isFocus={focusHabit === 'workout'}
           />
           <HabitToggle
             label="Run"
             value={todayHabits.run}
             onChange={(v) => updateHabit('run', v)}
+            isFocus={focusHabit === 'run'}
           />
           {todayHabits.run && (
             <MetricInput
@@ -289,21 +298,25 @@ const TodayPage = ({
             label="Kept my word"
             value={todayHabits.keptWord}
             onChange={(v) => updateHabit('keptWord', v)}
+            isFocus={focusHabit === 'keptWord'}
           />
           <HabitToggle
             label="Did a hard thing voluntarily"
             value={todayHabits.hardThing}
             onChange={(v) => updateHabit('hardThing', v)}
+            isFocus={focusHabit === 'hardThing'}
           />
           <HabitToggle
             label="Acted with integrity"
             value={todayHabits.integrity}
             onChange={(v) => updateHabit('integrity', v)}
+            isFocus={focusHabit === 'integrity'}
           />
           <HabitToggle
             label="Ate healthy (no sugar)"
             value={todayHabits.healthyEating}
             onChange={(v) => updateHabit('healthyEating', v)}
+            isFocus={focusHabit === 'healthyEating'}
           />
         </div>
       </div>
