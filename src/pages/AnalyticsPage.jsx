@@ -4,7 +4,7 @@ import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, T
 import { Card, Icons, TabBar } from '../components';
 import { calculateDailyScore, calculateStreak, formatDate, getDaysAgo, getToday } from '../utils';
 
-const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readingSessions }) => {
+const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readingSessions, mediaSessions, library }) => {
   const [range, setRange] = useState('week');
 
   const rangeConfig = {
@@ -12,6 +12,14 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
     month: { days: 30, label: 'This Month' },
     quarter: { days: 90, label: 'Last 90 Days' }
   };
+
+  const libraryById = useMemo(() => {
+    const map = {};
+    library.forEach(item => {
+      map[item.id] = item;
+    });
+    return map;
+  }, [library]);
 
   const sessionsByDate = useMemo(() => {
     const map = {};
@@ -199,6 +207,53 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
 
     return { income, expenses, net: income - expenses };
   }, [transactions, range]);
+
+  const readingTimeStats = useMemo(() => {
+    const days = rangeConfig[range].days;
+    const startDate = getDaysAgo(days - 1);
+    const periodSessions = readingSessions.filter(s => s.date >= startDate);
+    const periodMinutes = periodSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = `${currentYear}-01-01`;
+    const ytdMinutes = readingSessions
+      .filter(s => s.date >= yearStart)
+      .reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+
+    return { periodMinutes, ytdMinutes };
+  }, [readingSessions, range]);
+
+  const mediaStats = useMemo(() => {
+    const days = rangeConfig[range].days;
+    const startDate = getDaysAgo(days - 1);
+    const periodSessions = mediaSessions.filter(s => s.date >= startDate);
+    const totalsByType = { series: 0, course: 0, podcast: 0 };
+    periodSessions.forEach(session => {
+      const item = libraryById[session.itemId];
+      if (!item) return;
+      if (totalsByType[item.type] !== undefined) {
+        totalsByType[item.type] += session.durationMinutes || 0;
+      }
+    });
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = `${currentYear}-01-01`;
+    const ytdSessions = mediaSessions.filter(s => s.date >= yearStart);
+    let ytdTotalMinutes = 0;
+    ytdSessions.forEach(session => {
+      const item = libraryById[session.itemId];
+      if (!item) return;
+      if (['series', 'course', 'podcast'].includes(item.type)) {
+        ytdTotalMinutes += session.durationMinutes || 0;
+      }
+    });
+
+    return {
+      totalsByType,
+      periodTotalMinutes: Object.values(totalsByType).reduce((sum, v) => sum + v, 0),
+      ytdTotalMinutes
+    };
+  }, [mediaSessions, range, libraryById]);
 
   const heatmapWeeks = useMemo(() => {
     const start = new Date();
@@ -528,6 +583,44 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
             </div>
             <div className="text-slate-500 text-xs">Net</div>
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-slate-400 text-sm mb-4">Reading Time ({rangeConfig[range].label})</h3>
+        <div className="flex items-center justify-between text-sm text-slate-400">
+          <span>Total</span>
+          <span className="text-white font-semibold">{(readingTimeStats.periodMinutes / 60).toFixed(1)}h</span>
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+          <span>Year to date</span>
+          <span>{(readingTimeStats.ytdMinutes / 60).toFixed(1)}h</span>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-slate-400 text-sm mb-4">Media Time ({rangeConfig[range].label})</h3>
+        <div className="grid grid-cols-3 gap-3 text-center mb-4">
+          <div>
+            <div className="text-amber-400 text-xl font-bold">{(mediaStats.totalsByType.series / 60).toFixed(1)}h</div>
+            <div className="text-slate-500 text-xs">Series</div>
+          </div>
+          <div>
+            <div className="text-sky-400 text-xl font-bold">{(mediaStats.totalsByType.course / 60).toFixed(1)}h</div>
+            <div className="text-slate-500 text-xs">Courses</div>
+          </div>
+          <div>
+            <div className="text-violet-400 text-xl font-bold">{(mediaStats.totalsByType.podcast / 60).toFixed(1)}h</div>
+            <div className="text-slate-500 text-xs">Podcasts</div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between text-sm text-slate-400">
+          <span>Total</span>
+          <span className="text-white font-semibold">{(mediaStats.periodTotalMinutes / 60).toFixed(1)}h</span>
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+          <span>Year to date</span>
+          <span>{(mediaStats.ytdTotalMinutes / 60).toFixed(1)}h</span>
         </div>
       </Card>
     </div>

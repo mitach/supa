@@ -5,11 +5,14 @@ const STORAGE_KEYS = {
   transactions: 'progress_transactions',
   library: 'progress_library',
   readingSessions: 'progress_reading_sessions',
+  mediaSessions: 'progress_media_sessions',
   learningNotes: 'progress_learning_notes',
   srsState: 'progress_srs_state',
   reviews: 'progress_reviews',
   goals: 'progress_goals',
-  focusHabit: 'progress_focus_habit'
+  focusHabit: 'progress_focus_habit',
+  onboardingComplete: 'progress_onboarding_complete',
+  focusAlertLast: 'progress_focus_alert_last'
 };
 
 const loadData = (key) => {

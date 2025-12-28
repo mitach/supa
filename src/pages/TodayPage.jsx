@@ -13,6 +13,7 @@ import {
   TransactionForm
 } from '../components';
 import { calculateDailyScore, calculateStreak, generateId, getDaysAgo, getToday } from '../utils';
+import { STORAGE_KEYS } from '../storage';
 
 const TodayPage = ({
   metrics, setMetrics,
@@ -32,6 +33,7 @@ const TodayPage = ({
   const [showQuickAdd, setShowQuickAdd] = useState(null);
   const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
   const [pagesView, setPagesView] = useState('total');
+  const [showFocusAlert, setShowFocusAlert] = useState(false);
   const [journalText, setJournalText] = useState(todayJournal.text || '');
   const [tilText, setTilText] = useState(todayJournal.til || '');
   const [avoidedText, setAvoidedText] = useState(todayJournal.avoided || '');
@@ -61,6 +63,24 @@ const TodayPage = ({
     const timeout = setTimeout(saveJournal, 500);
     return () => clearTimeout(timeout);
   }, [journalText, tilText, avoidedText]);
+
+  useEffect(() => {
+    if (!focusHabit) return;
+    const yesterday = getDaysAgo(1);
+    const dayBefore = getDaysAgo(2);
+    const missedYesterday = !habits[yesterday]?.[focusHabit];
+    const missedDayBefore = !habits[dayBefore]?.[focusHabit];
+    if (!missedYesterday || !missedDayBefore) {
+      setShowFocusAlert(false);
+      return;
+    }
+    const lastAlert = localStorage.getItem(STORAGE_KEYS.focusAlertLast);
+    if (lastAlert === today) {
+      setShowFocusAlert(false);
+      return;
+    }
+    setShowFocusAlert(true);
+  }, [focusHabit, habits, today]);
 
   const noFapStreak = calculateStreak(habits, 'nofap');
   const workoutStreak = calculateStreak(habits, 'workout');
@@ -160,6 +180,28 @@ const TodayPage = ({
         onShowBreakdown={() => setShowScoreBreakdown(true)}
       />
 
+      {showFocusAlert && (
+        <Card className="p-4 bg-red-500/10 border border-red-500/20">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-red-400 font-semibold">Focus habit missed 2 days in a row</div>
+              <div className="text-slate-400 text-sm">
+                Today’s focus: {focusHabit.replace(/([A-Z])/g, ' $1').trim()}
+              </div>
+            </div>
+            <button
+              className="text-slate-400 hover:text-white text-sm"
+              onClick={() => {
+                localStorage.setItem(STORAGE_KEYS.focusAlertLast, today);
+                setShowFocusAlert(false);
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </Card>
+      )}
+
       <ScoreBreakdownModal
         isOpen={showScoreBreakdown}
         onClose={() => setShowScoreBreakdown(false)}
@@ -211,63 +253,6 @@ const TodayPage = ({
             unit="hours"
             goal={goals?.sleep || 7.5}
           />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Pages Read</span>
-              <div className="flex gap-2">
-                {['total', 'manual', 'sessions'].map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setPagesView(mode)}
-                    className={`px-2 py-1 rounded-lg capitalize ${
-                      pagesView === mode
-                        ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-slate-800/60 text-slate-400'
-                    }`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <MetricInput
-              label="Pages Read"
-              value={
-                pagesView === 'manual'
-                  ? todayMetrics.pages || 0
-                  : pagesView === 'sessions'
-                    ? todayPagesSessions
-                    : todayPagesTotal
-              }
-              onChange={(v) => {
-                if (pagesView === 'sessions') return;
-                if (v === null) {
-                  updateMetric('pages', null);
-                  return;
-                }
-                if (pagesView === 'manual') {
-                  updateMetric('pages', v === 0 ? null : v);
-                  return;
-                }
-                const manualPages = Math.max(0, v - todayPagesSessions);
-                updateMetric('pages', manualPages === 0 ? null : manualPages);
-              }}
-              placeholder="0"
-              disabled={pagesView === 'sessions'}
-            />
-          <div className="text-xs text-slate-500 px-1">
-            Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
-          </div>
-          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl px-3 py-2 text-xs text-slate-400">
-            Sessions today: {todayPagesSessions} pages
-            {todaySessionMinutes > 0 && (
-              <span> • {Math.floor(todaySessionMinutes / 60)}h {todaySessionMinutes % 60}m</span>
-            )}
-          </div>
-        </div>
-          <div className="text-xs text-slate-500 -mt-2 px-1">
-            Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
-          </div>
           <MetricInput
             label="Push-ups"
             value={todayMetrics.pushups}
@@ -275,40 +260,6 @@ const TodayPage = ({
             placeholder="0"
             quickAdd={[10, 20, 50]}
           />
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Money</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="p-4">
-            <div className="text-slate-400 text-sm mb-1">Spent Today</div>
-            <div className="text-2xl font-bold text-red-400">${todaySpend.toFixed(2)}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-slate-400 text-sm mb-1">Earned Today</div>
-            <div className="text-2xl font-bold text-emerald-400">${todayIncome.toFixed(2)}</div>
-          </Card>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => setShowQuickAdd('transaction')}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <Icons.Plus /> Add Transaction
-            </span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full border border-slate-700"
-            onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'money' }))}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <Icons.Chart /> View Details
-            </span>
-          </Button>
         </div>
       </div>
 
@@ -377,6 +328,116 @@ const TodayPage = ({
       </div>
 
       <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Reading</h2>
+        <Card className="p-4 space-y-3">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>Pages Read</span>
+              <div className="flex gap-2">
+                {['total', 'manual', 'sessions'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPagesView(mode)}
+                    className={`px-2 py-1 rounded-lg capitalize ${
+                      pagesView === mode
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-slate-800/60 text-slate-400'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <MetricInput
+              label="Pages Read"
+              value={
+                pagesView === 'manual'
+                  ? todayMetrics.pages || 0
+                  : pagesView === 'sessions'
+                    ? todayPagesSessions
+                    : todayPagesTotal
+              }
+              onChange={(v) => {
+                if (pagesView === 'sessions') return;
+                if (v === null) {
+                  updateMetric('pages', null);
+                  return;
+                }
+                if (pagesView === 'manual') {
+                  updateMetric('pages', v === 0 ? null : v);
+                  return;
+                }
+                const manualPages = Math.max(0, v - todayPagesSessions);
+                updateMetric('pages', manualPages === 0 ? null : manualPages);
+              }}
+              placeholder="0"
+              disabled={pagesView === 'sessions'}
+            />
+            <div className="text-xs text-slate-500 px-1">
+              Sessions: {todayPagesSessions} pages - Manual: {todayMetrics.pages || 0}
+            </div>
+            <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl px-3 py-2 text-xs text-slate-400">
+              Sessions today: {todayPagesSessions} pages
+              {todaySessionMinutes > 0 && (
+                <span> - {Math.floor(todaySessionMinutes / 60)}h {todaySessionMinutes % 60}m</span>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="secondary" onClick={() => setShowQuickAdd('reading')}>
+              <span className="flex items-center justify-center gap-2">
+                <Icons.Book /> Add Session
+              </span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="border border-slate-700"
+              onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'library' }))}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Icons.Plus /> Library
+              </span>
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Money</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="p-4">
+            <div className="text-slate-400 text-sm mb-1">Spent Today</div>
+            <div className="text-2xl font-bold text-red-400">${todaySpend.toFixed(2)}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-slate-400 text-sm mb-1">Earned Today</div>
+            <div className="text-2xl font-bold text-emerald-400">${todayIncome.toFixed(2)}</div>
+          </Card>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => setShowQuickAdd('transaction')}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Icons.Plus /> Add Transaction
+            </span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full border border-slate-700"
+            onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'money' }))}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Icons.Chart /> View Details
+            </span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Quick Notes</h2>
         <Card className="p-4">
           <label className="text-slate-400 text-sm mb-2 block">Today I Learned</label>
@@ -398,22 +459,6 @@ const TodayPage = ({
             rows={2}
           />
         </Card>
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="secondary" onClick={() => setShowQuickAdd('reading')}>
-            <span className="flex items-center justify-center gap-2">
-              <Icons.Book /> Reading
-            </span>
-          </Button>
-          <Button variant="secondary" onClick={() => setShowQuickAdd('library')}>
-            <span className="flex items-center justify-center gap-2">
-              <Icons.Plus /> Library
-            </span>
-          </Button>
-        </div>
       </div>
 
       <Card className="p-4 bg-slate-800/30">

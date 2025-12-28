@@ -13,6 +13,7 @@ const SettingsPage = ({
   transactions,
   library,
   learningNotes,
+  mediaSessions,
   focusHabit,
   setFocusHabit
 }) => {
@@ -36,6 +37,7 @@ const SettingsPage = ({
       transactions,
       library,
       learningNotes,
+      mediaSessions,
       goals
     };
 
@@ -63,6 +65,7 @@ const SettingsPage = ({
         if (data.library) saveData(STORAGE_KEYS.library, data.library);
         if (data.learningNotes) saveData(STORAGE_KEYS.learningNotes, data.learningNotes);
         if (data.goals) saveData(STORAGE_KEYS.goals, data.goals);
+        if (data.mediaSessions) saveData(STORAGE_KEYS.mediaSessions, data.mediaSessions);
         window.location.reload();
       } catch {
         alert('Error importing data. Please check the file format.');
@@ -197,6 +200,10 @@ const SettingsPage = ({
           <div>
             <span className="text-slate-500">Learning Notes:</span>
             <span className="text-white ml-2">{learningNotes.length}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">Media Sessions:</span>
+            <span className="text-white ml-2">{mediaSessions.length}</span>
           </div>
         </div>
       </Card>

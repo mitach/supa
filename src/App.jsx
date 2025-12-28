@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Icons } from './components';
+import { Button, Icons, Modal } from './components';
 import { usePersistedState } from './hooks/usePersistedState';
 import AnalyticsPage from './pages/AnalyticsPage';
 import JournalPage from './pages/JournalPage';
@@ -28,6 +28,7 @@ export default function App() {
   const [transactions, setTransactions] = usePersistedState(STORAGE_KEYS.transactions, []);
   const [library, setLibrary] = usePersistedState(STORAGE_KEYS.library, []);
   const [readingSessions, setReadingSessions] = usePersistedState(STORAGE_KEYS.readingSessions, []);
+  const [mediaSessions, setMediaSessions] = usePersistedState(STORAGE_KEYS.mediaSessions, []);
   const [learningNotes, setLearningNotes] = usePersistedState(STORAGE_KEYS.learningNotes, []);
   const [srsState, setSrsState] = usePersistedState(STORAGE_KEYS.srsState, {});
   const [goals, setGoals] = usePersistedState(
@@ -35,6 +36,9 @@ export default function App() {
     { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 }
   );
   const [focusHabit, setFocusHabit] = usePersistedState(STORAGE_KEYS.focusHabit, 'workout');
+  const [onboardingComplete, setOnboardingComplete] = usePersistedState(STORAGE_KEYS.onboardingComplete, false);
+  const [onboardingGoals, setOnboardingGoals] = useState(goals);
+  const [onboardingFocus, setOnboardingFocus] = useState(focusHabit || 'workout');
 
   const navItems = [
     { id: 'today', icon: <Icons.Home />, label: 'Today' },
@@ -56,6 +60,7 @@ export default function App() {
       transactions, setTransactions,
       library, setLibrary,
       readingSessions, setReadingSessions,
+      mediaSessions, setMediaSessions,
       learningNotes, setLearningNotes,
       srsState, setSrsState,
       goals, setGoals,
@@ -160,6 +165,99 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={!onboardingComplete}
+        onClose={() => {}}
+        title="Quick Setup"
+      >
+        <div className="space-y-4">
+          <div className="text-slate-400 text-sm">
+            Set your goals and weekly focus. You can edit these later in Settings.
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Steps Goal</label>
+              <input
+                type="number"
+                value={onboardingGoals?.steps || 10000}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, steps: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Water Goal (L)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={onboardingGoals?.water || 1.5}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, water: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Sleep Goal (hours)</label>
+              <input
+                type="number"
+                step="0.5"
+                value={onboardingGoals?.sleep || 7.5}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, sleep: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Pages Goal (daily)</label>
+              <input
+                type="number"
+                value={onboardingGoals?.pages || 20}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, pages: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Push-ups Goal (daily)</label>
+              <input
+                type="number"
+                value={onboardingGoals?.pushups || 50}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, pushups: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Weekly Focus Habit</label>
+              <select
+                value={onboardingFocus}
+                onChange={(e) => setOnboardingFocus(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              >
+                {[
+                  { value: 'nofap', label: 'NoFap' },
+                  { value: 'workout', label: 'Workout' },
+                  { value: 'run', label: 'Run' },
+                  { value: 'keptWord', label: 'Kept my word' },
+                  { value: 'hardThing', label: 'Did a hard thing' },
+                  { value: 'integrity', label: 'Acted with integrity' },
+                  { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
+                ].map((habit) => (
+                  <option key={habit.value} value={habit.value}>
+                    {habit.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => {
+              setGoals(onboardingGoals);
+              setFocusHabit(onboardingFocus);
+              setOnboardingComplete(true);
+            }}
+          >
+            Save Setup
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

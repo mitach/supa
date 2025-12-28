@@ -4,7 +4,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Button, Card, Icons, LibraryForm, Modal } from '../components';
 import { formatDate, generateId, getToday } from '../utils';
 
-const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions }) => {
+const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions, mediaSessions, setMediaSessions }) => {
   const [filter, setFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -16,6 +16,13 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
     pages: '',
     hours: '',
     minutes: ''
+  });
+  const [editMediaSession, setEditMediaSession] = useState(null);
+  const [showAddMediaSession, setShowAddMediaSession] = useState(false);
+  const [newMediaSession, setNewMediaSession] = useState({
+    date: getToday(),
+    durationMinutes: '',
+    episodesWatched: ''
   });
 
   const types = ['all', 'book', 'movie', 'series', 'article', 'course', 'podcast'];
@@ -42,6 +49,29 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
     if (hrs) return `${hrs}h`;
     return `${mins}m`;
   };
+  const progressConfig = {
+    series: { unit: 'eps', label: 'watched' },
+    course: { unit: 'h', label: 'completed' },
+  };
+  const getSeriesEpisodesCompleted = (itemId) => {
+    return mediaSessions
+      .filter(s => s.itemId === itemId)
+      .reduce((sum, s) => sum + (s.episodesWatched || 0), 0);
+  };
+  const getProgressSummary = (item) => {
+    const config = progressConfig[item.type];
+    if (!config) return '';
+    const total = item.progressTotal || 0;
+    const completed = item.type === 'series'
+      ? getSeriesEpisodesCompleted(item.id)
+      : (item.progressCompleted || 0);
+    if (!total && !completed) return '';
+    const percent = total ? Math.min(100, Math.round((completed / total) * 100)) : null;
+    const base = total
+      ? `${completed}/${total} ${config.unit}`
+      : `${completed} ${config.unit}`;
+    return percent !== null ? `${percent}% - ${base} ${config.label}` : `${base} ${config.label}`;
+  };
   const getWeeklyReadingData = (itemId) => {
     const weeks = [];
     const today = new Date();
@@ -63,6 +93,83 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
       });
     }
     return weeks;
+  };
+  const getMediaSessions = (itemId) => {
+    return mediaSessions
+      .filter(s => s.itemId === itemId)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  };
+  const getMediaDurationMinutes = (itemId) => {
+    return mediaSessions
+      .filter(s => s.itemId === itemId)
+      .reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+  };
+  const getWeeklyMediaData = (itemId) => {
+    const weeks = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(today);
+      start.setDate(today.getDate() - (today.getDay() + 7 * i));
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      const weekSessions = mediaSessions.filter(s =>
+        s.itemId === itemId && s.date >= formatDate(start) && s.date <= formatDate(end)
+      );
+      const minutes = weekSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+      weeks.push({
+        label: `${start.getMonth() + 1}/${start.getDate()}`,
+        hours: Number((minutes / 60).toFixed(1))
+      });
+    }
+    return weeks;
+  };
+  const openAddMediaSession = () => {
+    setNewMediaSession({
+      date: getToday(),
+      durationMinutes: '',
+      episodesWatched: ''
+    });
+    setShowAddMediaSession(true);
+  };
+  const openEditMediaSession = (session) => {
+    setEditMediaSession({
+      ...session,
+      durationMinutes: session.durationMinutes ? String(session.durationMinutes) : '',
+      episodesWatched: session.episodesWatched ? String(session.episodesWatched) : ''
+    });
+  };
+  const saveNewMediaSession = () => {
+    if (!editItem || !newMediaSession.durationMinutes) return;
+    setMediaSessions(prev => [
+      ...prev,
+      {
+        id: generateId(),
+        itemId: editItem.id,
+        date: newMediaSession.date,
+        durationMinutes: Number(newMediaSession.durationMinutes),
+        episodesWatched: newMediaSession.episodesWatched ? Number(newMediaSession.episodesWatched) : undefined
+      }
+    ]);
+    setShowAddMediaSession(false);
+  };
+  const saveMediaSession = () => {
+    if (!editMediaSession) return;
+    setMediaSessions(prev => prev.map(s =>
+      s.id === editMediaSession.id
+        ? {
+            ...s,
+            date: editMediaSession.date,
+            durationMinutes: Number(editMediaSession.durationMinutes),
+            episodesWatched: editMediaSession.episodesWatched ? Number(editMediaSession.episodesWatched) : undefined
+          }
+        : s
+    ));
+    setEditMediaSession(null);
+  };
+  const deleteMediaSession = (id) => {
+    setMediaSessions(prev => prev.filter(s => s.id !== id));
+    setEditMediaSession(null);
   };
   const openEditSession = (session) => {
     const hours = session.durationMinutes ? Math.floor(session.durationMinutes / 60) : 0;
@@ -86,6 +193,16 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
     const allSessions = readingSessions
       .filter(s => s.bookId === itemId)
       .sort((a, b) => b.date.localeCompare(a.date));
+    if (sessionFilter === 'latest10') return allSessions.slice(0, 10);
+    if (sessionFilter === 'month') {
+      const now = new Date();
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      return allSessions.filter(s => s.date.startsWith(monthStr));
+    }
+    return allSessions;
+  };
+  const getFilteredMediaSessions = (itemId) => {
+    const allSessions = getMediaSessions(itemId);
     if (sessionFilter === 'latest10') return allSessions.slice(0, 10);
     if (sessionFilter === 'month') {
       const now = new Date();
@@ -187,6 +304,34 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
                     {getItemDurationMinutes(item.id) > 0 && (
                       <span> • {formatDuration(getItemDurationMinutes(item.id))}</span>
                     )}
+                  </p>
+                )}
+                {item.type === 'movie' && item.durationMinutes && (
+                  <p className="text-slate-500 text-sm">
+                    {item.durationMinutes} min
+                  </p>
+                )}
+                {(item.type === 'series' || item.type === 'course') && (
+                  <p className="text-slate-500 text-sm">
+                    {getProgressSummary(item)}
+                    {getMediaSessions(item.id).length > 0 && (
+                      <span> • {formatDuration(getMediaDurationMinutes(item.id))}</span>
+                    )}
+                  </p>
+                )}
+                {item.type === 'podcast' && getMediaSessions(item.id).length > 0 && (
+                  <p className="text-slate-500 text-sm">
+                    {formatDuration(getMediaDurationMinutes(item.id))}
+                  </p>
+                )}
+                {(item.type === 'series' || item.type === 'course') && item.startedAt && (
+                  <p className="text-slate-600 text-xs">
+                    Started {new Date(item.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </p>
+                )}
+                {item.type !== 'book' && item.type !== 'movie' && item.type !== 'series' && item.type !== 'course' && getProgressSummary(item) && (
+                  <p className="text-slate-500 text-sm">
+                    {getProgressSummary(item)}
                   </p>
                 )}
                 {item.rating && (
@@ -314,6 +459,94 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
             </div>
           </Card>
         )}
+        {(editItem?.type === 'series' || editItem?.type === 'course' || editItem?.type === 'podcast') && (
+          <Card className="p-4 mt-4 bg-slate-800/30">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-400 text-sm">Sessions</div>
+              <div className="flex items-center gap-3">
+                <div className="text-slate-500 text-xs">
+                  {(editItem.type === 'series' || editItem.type === 'course') && getProgressSummary(editItem)}
+                  {getMediaSessions(editItem.id).length > 0 && (
+                    <span>{editItem.type === 'series' || editItem.type === 'course' ? ' • ' : ''}{formatDuration(getMediaDurationMinutes(editItem.id))}</span>
+                  )}
+                </div>
+                {(editItem.type === 'series' || editItem.type === 'course') && editItem.startedAt && (
+                  <div className="text-slate-600 text-xs">
+                    Started {new Date(editItem.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                )}
+                <button
+                  className="text-xs text-amber-300 hover:text-amber-200"
+                  onClick={openAddMediaSession}
+                >
+                  + Add session
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2 mb-3">
+              {[
+                { id: 'latest10', label: 'Latest 10' },
+                { id: 'month', label: 'This Month' },
+                { id: 'all', label: 'All' }
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setSessionFilter(option.id)}
+                  className={`px-2 py-1 rounded-lg text-xs ${
+                    sessionFilter === option.id
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-slate-900/40 text-slate-400'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="h-28 mb-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getWeeklyMediaData(editItem.id)}>
+                  <XAxis dataKey="label" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
+                    labelStyle={{ color: '#94a3b8' }}
+                    formatter={(value) => [`${value} h`, 'Time']}
+                  />
+                  <Bar dataKey="hours" fill="#38bdf8" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {getFilteredMediaSessions(editItem.id).map((session) => (
+                <div key={session.id} className="flex items-center justify-between text-sm bg-slate-900/40 rounded-lg px-3 py-2">
+                  <div className="text-slate-300">
+                    {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="text-slate-400">
+                    {session.durationMinutes} min
+                    {editItem.type === 'series' && session.episodesWatched ? ` • ${session.episodesWatched} eps` : ''}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="text-slate-400 hover:text-white text-xs"
+                      onClick={() => openEditMediaSession(session)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-red-400 hover:text-red-300 text-xs"
+                      onClick={() => deleteMediaSession(session.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {getMediaSessions(editItem.id).length === 0 && (
+                <div className="text-slate-500 text-sm">No sessions yet.</div>
+              )}
+            </div>
+          </Card>
+        )}
       </Modal>
 
       <Modal
@@ -424,6 +657,100 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showAddMediaSession}
+        onClose={() => setShowAddMediaSession(false)}
+        title="Add Session"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-slate-400 text-sm mb-2 block">Date</label>
+            <input
+              type="date"
+              value={newMediaSession.date}
+              onChange={(e) => setNewMediaSession(prev => ({ ...prev, date: e.target.value }))}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+          <div>
+            <label className="text-slate-400 text-sm mb-2 block">Duration (minutes)</label>
+            <input
+              type="number"
+              value={newMediaSession.durationMinutes}
+              onChange={(e) => setNewMediaSession(prev => ({ ...prev, durationMinutes: e.target.value }))}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+          {editItem?.type === 'series' && (
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Episodes watched (optional)</label>
+              <input
+                type="number"
+                value={newMediaSession.episodesWatched}
+                onChange={(e) => setNewMediaSession(prev => ({ ...prev, episodesWatched: e.target.value }))}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button variant="secondary" className="flex-1" onClick={() => setShowAddMediaSession(false)}>
+              Cancel
+            </Button>
+            <Button className="flex-1" onClick={saveNewMediaSession} disabled={!newMediaSession.durationMinutes}>
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!editMediaSession}
+        onClose={() => setEditMediaSession(null)}
+        title="Edit Session"
+      >
+        {editMediaSession && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Date</label>
+              <input
+                type="date"
+                value={editMediaSession.date}
+                onChange={(e) => setEditMediaSession(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Duration (minutes)</label>
+              <input
+                type="number"
+                value={editMediaSession.durationMinutes}
+                onChange={(e) => setEditMediaSession(prev => ({ ...prev, durationMinutes: e.target.value }))}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            {editItem?.type === 'series' && (
+              <div>
+                <label className="text-slate-400 text-sm mb-2 block">Episodes watched (optional)</label>
+                <input
+                  type="number"
+                  value={editMediaSession.episodesWatched}
+                  onChange={(e) => setEditMediaSession(prev => ({ ...prev, episodesWatched: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setEditMediaSession(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={saveMediaSession}>
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
