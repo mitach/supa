@@ -186,7 +186,7 @@ const SettingsPage = ({
           <Button variant="secondary" className="w-full" onClick={handleExport}>
             Export All Data (JSON)
           </Button>
-          <label className="block">
+          <label className="relative block">
             <Button variant="secondary" className="w-full pointer-events-none">
               Import Data
             </Button>
