@@ -1,4 +1,4 @@
-const MetricInput = ({ label, value, onChange, placeholder, unit, goal, quickAdd }) => {
+const MetricInput = ({ label, value, onChange, placeholder, unit, goal, quickAdd, disabled }) => {
   const progress = goal && value ? Math.min(100, (value / goal) * 100) : 0;
 
   return (
@@ -17,7 +17,10 @@ const MetricInput = ({ label, value, onChange, placeholder, unit, goal, quickAdd
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
           placeholder={placeholder}
-          className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
+          disabled={disabled}
+          className={`flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all ${
+            disabled ? 'opacity-60 cursor-not-allowed' : ''
+          }`}
         />
         {unit && <span className="text-slate-500 text-sm">{unit}</span>}
       </div>

@@ -31,6 +31,7 @@ const TodayPage = ({
 
   const [showQuickAdd, setShowQuickAdd] = useState(null);
   const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
+  const [pagesView, setPagesView] = useState('total');
   const [journalText, setJournalText] = useState(todayJournal.text || '');
   const [tilText, setTilText] = useState(todayJournal.til || '');
   const [avoidedText, setAvoidedText] = useState(todayJournal.avoided || '');
@@ -71,14 +72,15 @@ const TodayPage = ({
     .filter(t => t.date === today && t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const todayPages = readingSessions
+  const todayPagesSessions = readingSessions
     .filter(s => s.date === today)
     .reduce((sum, s) => sum + s.pages, 0);
+  const todayPagesTotal = (todayMetrics.pages || 0) + todayPagesSessions;
 
   const dailyScore = useMemo(() => {
-    const metricsWithPages = { ...todayMetrics, pages: todayPages || todayMetrics.pages };
+    const metricsWithPages = { ...todayMetrics, pages: todayPagesTotal };
     return calculateDailyScore(metricsWithPages, todayHabits, goals, todayJournal);
-  }, [todayMetrics, todayHabits, goals, todayJournal, todayPages]);
+  }, [todayMetrics, todayHabits, goals, todayJournal, todayPagesTotal]);
 
   const { weeklyAvg, lastWeekAvg } = useMemo(() => {
     let thisWeekTotal = 0;
@@ -121,7 +123,7 @@ const TodayPage = ({
     if (bodyParts.length) parts.push(`Body: ${bodyParts.join(', ')}`);
 
     const mindParts = [];
-    if (todayPages > 0) mindParts.push(`${todayPages} pages`);
+    if (todayPagesTotal > 0) mindParts.push(`${todayPagesTotal} pages`);
     if (tilText) mindParts.push('learned something');
     if (mindParts.length) parts.push(`Mind: ${mindParts.join(', ')}`);
 
@@ -207,12 +209,57 @@ const TodayPage = ({
             unit="hours"
             goal={goals?.sleep || 7.5}
           />
-          <MetricInput
-            label="Pages Read"
-            value={todayPages || todayMetrics.pages}
-            onChange={(v) => updateMetric('pages', v)}
-            placeholder="0"
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>Pages Read</span>
+              <div className="flex gap-2">
+                {['total', 'manual', 'sessions'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPagesView(mode)}
+                    className={`px-2 py-1 rounded-lg capitalize ${
+                      pagesView === mode
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-slate-800/60 text-slate-400'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <MetricInput
+              label="Pages Read"
+              value={
+                pagesView === 'manual'
+                  ? todayMetrics.pages || 0
+                  : pagesView === 'sessions'
+                    ? todayPagesSessions
+                    : todayPagesTotal
+              }
+              onChange={(v) => {
+                if (pagesView === 'sessions') return;
+                if (v === null) {
+                  updateMetric('pages', null);
+                  return;
+                }
+                if (pagesView === 'manual') {
+                  updateMetric('pages', v === 0 ? null : v);
+                  return;
+                }
+                const manualPages = Math.max(0, v - todayPagesSessions);
+                updateMetric('pages', manualPages === 0 ? null : manualPages);
+              }}
+              placeholder="0"
+              disabled={pagesView === 'sessions'}
+            />
+            <div className="text-xs text-slate-500 px-1">
+              Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
+            </div>
+          </div>
+          <div className="text-xs text-slate-500 -mt-2 px-1">
+            Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
+          </div>
           <MetricInput
             label="Push-ups"
             value={todayMetrics.pushups}

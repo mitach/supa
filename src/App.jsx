@@ -72,6 +72,7 @@ export default function App() {
           setHabits={setHabits}
           journals={journals}
           setJournals={setJournals}
+          readingSessions={readingSessions}
           goals={goals}
         />
       );
@@ -80,7 +81,17 @@ export default function App() {
       case 'library': return <LibraryPage {...props} />;
       case 'learning': return <LearningPage {...props} />;
       case 'analytics': return <AnalyticsPage {...props} />;
-      case 'review': return <ReviewPage metrics={metrics} habits={habits} transactions={transactions} journals={journals} goals={goals} />;
+      case 'review': return (
+        <ReviewPage
+          metrics={metrics}
+          habits={habits}
+          transactions={transactions}
+          journals={journals}
+          goals={goals}
+          readingSessions={readingSessions}
+          focusHabit={focusHabit}
+        />
+      );
       case 'settings': return <SettingsPage {...props} />;
       default: return <TodayPage {...props} />;
     }

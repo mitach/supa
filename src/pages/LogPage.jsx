@@ -3,12 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, HabitToggle, Icons, MetricInput } from '../components';
 import { calculateDailyScore, getDaysAgo, getToday } from '../utils';
 
-const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals, goals }) => {
+const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals, readingSessions, goals }) => {
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [editMode, setEditMode] = useState(false);
+  const [pagesView, setPagesView] = useState('total');
   const dayMetrics = metrics[selectedDate] || {};
   const dayHabits = habits[selectedDate] || {};
   const dayJournal = journals[selectedDate] || {};
+  const daySessionPages = readingSessions
+    .filter(s => s.date === selectedDate)
+    .reduce((sum, s) => sum + s.pages, 0);
+  const dayPagesTotal = (dayMetrics.pages || 0) + daySessionPages;
   const [editMetrics, setEditMetrics] = useState(dayMetrics);
   const [editHabits, setEditHabits] = useState(dayHabits);
   const [editJournal, setEditJournal] = useState({
@@ -19,6 +24,7 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
 
   useEffect(() => {
     setEditMode(false);
+    setPagesView('total');
     setEditMetrics(dayMetrics);
     setEditHabits(dayHabits);
     setEditJournal({
@@ -29,8 +35,8 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
   }, [selectedDate, metrics, habits, journals]);
 
   const dayScore = useMemo(() => {
-    return calculateDailyScore(dayMetrics, dayHabits, goals, dayJournal);
-  }, [dayMetrics, dayHabits, goals, dayJournal]);
+    return calculateDailyScore({ ...dayMetrics, pages: dayPagesTotal }, dayHabits, goals, dayJournal);
+  }, [dayMetrics, dayHabits, goals, dayJournal, dayPagesTotal]);
 
   const dates = useMemo(() => {
     const result = [];
@@ -41,15 +47,20 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
   }, []);
 
   const hasData = (date) => {
-    return metrics[date] || habits[date] || journals[date];
+    const hasSessions = readingSessions.some(s => s.date === date);
+    return metrics[date] || habits[date] || journals[date] || hasSessions;
   };
 
   const getDateScore = (date) => {
     const m = metrics[date] || {};
     const h = habits[date] || {};
     const j = journals[date] || {};
-    if (!metrics[date] && !habits[date]) return null;
-    return calculateDailyScore(m, h, goals, j).score;
+    const sessionPages = readingSessions
+      .filter(s => s.date === date)
+      .reduce((sum, s) => sum + s.pages, 0);
+    const totalPages = (m.pages || 0) + sessionPages;
+    if (!metrics[date] && !habits[date] && sessionPages === 0) return null;
+    return calculateDailyScore({ ...m, pages: totalPages }, h, goals, j).score;
   };
 
   const saveEdits = () => {
@@ -188,7 +199,10 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                     {icon} {label}
                   </div>
                   <div className="text-xl font-bold text-white">
-                    {dayMetrics[key] ?? 'n/a'}{unit && dayMetrics[key] ? unit : ''}
+                    {key === 'pages'
+                      ? dayPagesTotal || 'n/a'
+                      : dayMetrics[key] ?? 'n/a'}
+                    {unit && dayMetrics[key] ? unit : ''}
                   </div>
                 </div>
               ))}
@@ -269,12 +283,54 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   placeholder="0"
                   unit="hours"
                 />
-                <MetricInput
-                  label="Pages Read"
-                  value={editMetrics.pages}
-                  onChange={(v) => setEditMetrics(prev => ({ ...prev, pages: v }))}
-                  placeholder="0"
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Pages Read</span>
+                    <div className="flex gap-2">
+                      {['total', 'manual', 'sessions'].map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setPagesView(mode)}
+                          className={`px-2 py-1 rounded-lg capitalize ${
+                            pagesView === mode
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-slate-800/60 text-slate-400'
+                          }`}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <MetricInput
+                    label="Pages Read"
+                    value={
+                      pagesView === 'manual'
+                        ? editMetrics.pages || 0
+                        : pagesView === 'sessions'
+                          ? daySessionPages
+                          : (editMetrics.pages || 0) + daySessionPages
+                    }
+                    onChange={(v) => {
+                      if (pagesView === 'sessions') return;
+                      if (v === null) {
+                        setEditMetrics(prev => ({ ...prev, pages: null }));
+                        return;
+                      }
+                      if (pagesView === 'manual') {
+                        setEditMetrics(prev => ({ ...prev, pages: v === 0 ? null : v }));
+                        return;
+                      }
+                      const manualPages = Math.max(0, v - daySessionPages);
+                      setEditMetrics(prev => ({ ...prev, pages: manualPages === 0 ? null : manualPages }));
+                    }}
+                    placeholder="0"
+                    disabled={pagesView === 'sessions'}
+                  />
+                </div>
+                <div className="text-xs text-slate-500 -mt-2 px-1">
+                  Sessions: {daySessionPages} pages • Manual: {editMetrics.pages || 0}
+                </div>
                 <MetricInput
                   label="Push-ups"
                   value={editMetrics.pushups}

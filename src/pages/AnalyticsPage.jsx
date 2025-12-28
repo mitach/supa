@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Card, Icons, TabBar } from '../components';
-import { calculateDailyScore, calculateStreak, getDaysAgo, getToday } from '../utils';
+import { calculateDailyScore, calculateStreak, formatDate, getDaysAgo, getToday } from '../utils';
 
-const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
+const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readingSessions }) => {
   const [range, setRange] = useState('week');
 
   const rangeConfig = {
@@ -12,6 +12,14 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
     month: { days: 30, label: 'This Month' },
     quarter: { days: 90, label: 'Last 90 Days' }
   };
+
+  const sessionsByDate = useMemo(() => {
+    const map = {};
+    readingSessions.forEach((session) => {
+      map[session.date] = (map[session.date] || 0) + session.pages;
+    });
+    return map;
+  }, [readingSessions]);
 
   const chartData = useMemo(() => {
     const days = rangeConfig[range].days;
@@ -21,6 +29,9 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
       const date = getDaysAgo(i);
       const dayMetrics = metrics[date] || {};
       const dayHabits = habits[date] || {};
+      const sessionPages = sessionsByDate[date] || 0;
+
+      const metricsWithPages = { ...dayMetrics, pages: (dayMetrics.pages || 0) + sessionPages };
 
       data.push({
         date,
@@ -28,17 +39,17 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
         steps: dayMetrics.steps || 0,
         water: dayMetrics.water || 0,
         sleep: dayMetrics.sleep || 0,
-        pages: dayMetrics.pages || 0,
+        pages: metricsWithPages.pages,
         pushups: dayMetrics.pushups || 0,
         runDistance: dayMetrics.runDistance || 0,
         nofap: dayHabits.nofap ? 1 : 0,
         workout: dayHabits.workout ? 1 : 0,
-        score: calculateDailyScore(dayMetrics, dayHabits, goals, {}).score,
+        score: calculateDailyScore(metricsWithPages, dayHabits, goals, {}).score,
       });
     }
 
     return data;
-  }, [metrics, habits, range, goals]);
+  }, [metrics, habits, range, goals, sessionsByDate]);
 
   const averages = useMemo(() => {
     const logged = chartData.filter(d => d.steps || d.water || d.sleep);
@@ -147,6 +158,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
     let keptWordDays = 0;
     let hardThingDays = 0;
     let healthyEatingDays = 0;
+    let focusHabitDays = 0;
     let loggedDays = 0;
 
     for (let i = 0; i < days; i++) {
@@ -159,10 +171,12 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
         if (dayHabits.keptWord) keptWordDays++;
         if (dayHabits.hardThing) hardThingDays++;
         if (dayHabits.healthyEating) healthyEatingDays++;
+        if (focusHabit && dayHabits[focusHabit]) focusHabitDays++;
       }
     }
 
     const pct = (n) => loggedDays ? Math.round((n / loggedDays) * 100) : 0;
+    const focusPct = focusHabit ? Math.round((focusHabitDays / days) * 100) : null;
 
     return {
       workout: pct(workoutDays),
@@ -170,9 +184,10 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
       keptWord: pct(keptWordDays),
       hardThing: pct(hardThingDays),
       healthyEating: pct(healthyEatingDays),
+      focusPct,
       loggedDays
     };
-  }, [habits, range]);
+  }, [habits, range, focusHabit]);
 
   const moneyStats = useMemo(() => {
     const days = rangeConfig[range].days;
@@ -184,6 +199,43 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
 
     return { income, expenses, net: income - expenses };
   }, [transactions, range]);
+
+  const heatmapWeeks = useMemo(() => {
+    const start = new Date();
+    start.setDate(start.getDate() - 364);
+    start.setHours(0, 0, 0, 0);
+    const totalDays = 365;
+    const startDay = start.getDay();
+    const weeksCount = Math.ceil((startDay + totalDays) / 7);
+    const weeks = Array.from({ length: weeksCount }, () => Array(7).fill(null));
+
+    for (let i = 0; i < totalDays; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const dateStr = formatDate(date);
+      const dayMetrics = metrics[dateStr] || {};
+      const dayHabits = habits[dateStr] || {};
+      const logged = Object.keys(dayMetrics).length > 0 || Object.keys(dayHabits).length > 0;
+      const score = logged ? calculateDailyScore(dayMetrics, dayHabits, goals, {}).score : 0;
+
+      let color = 'bg-slate-800/50';
+      if (logged && score >= 80) color = 'bg-emerald-500';
+      else if (logged && score >= 60) color = 'bg-emerald-400/80';
+      else if (logged && score >= 40) color = 'bg-amber-400/80';
+      else if (logged) color = 'bg-amber-500/40';
+
+      const weekIndex = Math.floor((startDay + i) / 7);
+      const dayIndex = date.getDay();
+      weeks[weekIndex][dayIndex] = {
+        date: dateStr,
+        score,
+        logged,
+        color
+      };
+    }
+
+    return weeks;
+  }, [metrics, habits, goals]);
 
   return (
     <div className="space-y-6 pb-24">
@@ -214,6 +266,20 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
           <div className="text-slate-500 text-xs">of {rangeConfig[range].days}</div>
         </Card>
       </div>
+
+      {focusHabit && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-slate-400 text-sm">Weekly Focus</div>
+              <div className="text-2xl font-bold text-amber-400">{habitStats.focusPct}%</div>
+            </div>
+            <div className="text-slate-500 text-sm">
+              {focusHabit.replace(/([A-Z])/g, ' $1').trim()}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
@@ -414,6 +480,34 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-slate-400 text-sm mb-3">Consistency Heatmap (365 days)</h3>
+        <div className="overflow-x-auto">
+          <div className="grid grid-flow-col auto-cols-max gap-1">
+            {heatmapWeeks.map((week, weekIndex) => (
+              <div key={weekIndex} className="flex flex-col gap-1">
+                {week.map((day, dayIndex) => (
+                  <div
+                    key={dayIndex}
+                    title={day ? `${day.date} - ${day.logged ? `${day.score} pts` : 'No data'}` : 'No data'}
+                    className={`w-3 h-3 rounded-sm ${day ? day.color : 'bg-slate-800/50'}`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500 mt-3">
+          <span>Less</span>
+          <div className="w-3 h-3 rounded-sm bg-slate-800/50" />
+          <div className="w-3 h-3 rounded-sm bg-amber-500/40" />
+          <div className="w-3 h-3 rounded-sm bg-amber-400/80" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-400/80" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-500" />
+          <span>More</span>
         </div>
       </Card>
 

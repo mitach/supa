@@ -5,6 +5,8 @@ import { Button } from '../Button';
 const ReadingSessionForm = ({ books, onSave }) => {
   const [bookId, setBookId] = useState(books[0]?.id || '');
   const [pages, setPages] = useState('');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
 
   return (
     <div className="space-y-4">
@@ -34,9 +36,32 @@ const ReadingSessionForm = ({ books, onSave }) => {
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-2xl font-bold focus:outline-none focus:border-amber-500/50"
         />
       </div>
+      <div>
+        <label className="text-slate-400 text-sm mb-2 block">Session Duration (optional)</label>
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            type="number"
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+            placeholder="Hours"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+          />
+          <input
+            type="number"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            placeholder="Minutes"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+          />
+        </div>
+      </div>
       <Button
         className="w-full"
-        onClick={() => pages && bookId && onSave({ bookId, pages: Number(pages) })}
+        onClick={() => {
+          if (!pages || !bookId) return;
+          const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0);
+          onSave({ bookId, pages: Number(pages), durationMinutes: totalMinutes || undefined });
+        }}
         disabled={!pages || !bookId}
       >
         Save Session

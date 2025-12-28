@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button, Card, Modal, TabBar } from '../components';
 import { calculateDailyScore, formatDate, getMonthStart, getToday, getWeekStart } from '../utils';
 
-const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
+const ReviewPage = ({ metrics, habits, transactions, journals, goals, focusHabit, readingSessions }) => {
   const [reviewType, setReviewType] = useState('weekly');
   const [showReviewForm, setShowReviewForm] = useState(false);
 
@@ -11,7 +11,17 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
   const weekStart = getWeekStart(today);
   const monthStart = getMonthStart(today);
 
+  const sessionsByDate = useMemo(() => {
+    const map = {};
+    readingSessions.forEach((session) => {
+      map[session.date] = (map[session.date] || 0) + session.pages;
+    });
+    return map;
+  }, [readingSessions]);
+
   const getReviewStats = (startDate, endDate) => {
+    const msDay = 1000 * 60 * 60 * 24;
+    const totalDays = Math.floor((new Date(endDate) - new Date(startDate)) / msDay) + 1;
     let sleepTotal = 0, sleepCount = 0;
     let stepsTotal = 0, stepsCount = 0;
     let waterTotal = 0, waterCount = 0;
@@ -19,6 +29,7 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
     let pushupsTotal = 0;
     let runDistanceTotal = 0;
     let workoutDays = 0, runDays = 0;
+    let focusHabitDays = 0;
     let income = 0, expenses = 0;
     let loggedDays = 0;
     let scoreTotal = 0, scoreCount = 0;
@@ -42,12 +53,14 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
       if (dayMetrics?.sleep) { sleepTotal += dayMetrics.sleep; sleepCount++; }
       if (dayMetrics?.steps) { stepsTotal += dayMetrics.steps; stepsCount++; }
       if (dayMetrics?.water) { waterTotal += dayMetrics.water; waterCount++; }
-      if (dayMetrics?.pages) pagesTotal += dayMetrics.pages;
+      const sessionPages = sessionsByDate[dateStr] || 0;
+      if (dayMetrics?.pages || sessionPages) pagesTotal += (dayMetrics?.pages || 0) + sessionPages;
       if (dayMetrics?.pushups) pushupsTotal += dayMetrics.pushups;
       if (dayMetrics?.runDistance) runDistanceTotal += dayMetrics.runDistance;
 
       if (dayHabits?.workout) workoutDays++;
       if (dayHabits?.run) runDays++;
+      if (focusHabit && dayHabits?.[focusHabit]) focusHabitDays++;
 
       date.setDate(date.getDate() + 1);
     }
@@ -72,7 +85,9 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
       income,
       expenses,
       net: income - expenses,
-      loggedDays
+      loggedDays,
+      focusHabitDays,
+      focusHabitPct: focusHabit ? Math.round((focusHabitDays / totalDays) * 100) : null
     };
   };
 
@@ -152,6 +167,13 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
           <div className="text-slate-400 text-sm">Run Days</div>
           <div className="text-2xl font-bold text-emerald-400">{stats.runDays}</div>
         </Card>
+        {focusHabit && (
+          <Card className="p-4">
+            <div className="text-slate-400 text-sm">Focus Habit</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.focusHabitPct}%</div>
+            <div className="text-slate-500 text-xs">{focusHabit.replace(/([A-Z])/g, ' $1').trim()}</div>
+          </Card>
+        )}
       </div>
 
       <Card className="p-4">
