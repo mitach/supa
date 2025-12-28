@@ -72,9 +72,11 @@ const TodayPage = ({
     .filter(t => t.date === today && t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const todayPagesSessions = readingSessions
+  const todaySessions = readingSessions.filter(s => s.date === today);
+  const todayPagesSessions = todaySessions
     .filter(s => s.date === today)
     .reduce((sum, s) => sum + s.pages, 0);
+  const todaySessionMinutes = todaySessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
   const todayPagesTotal = (todayMetrics.pages || 0) + todayPagesSessions;
 
   const dailyScore = useMemo(() => {
@@ -253,10 +255,16 @@ const TodayPage = ({
               placeholder="0"
               disabled={pagesView === 'sessions'}
             />
-            <div className="text-xs text-slate-500 px-1">
-              Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
-            </div>
+          <div className="text-xs text-slate-500 px-1">
+            Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
           </div>
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl px-3 py-2 text-xs text-slate-400">
+            Sessions today: {todayPagesSessions} pages
+            {todaySessionMinutes > 0 && (
+              <span> • {Math.floor(todaySessionMinutes / 60)}h {todaySessionMinutes % 60}m</span>
+            )}
+          </div>
+        </div>
           <div className="text-xs text-slate-500 -mt-2 px-1">
             Sessions: {todayPagesSessions} pages • Manual: {todayMetrics.pages || 0}
           </div>

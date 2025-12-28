@@ -10,6 +10,7 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
   const [editItem, setEditItem] = useState(null);
   const [editSession, setEditSession] = useState(null);
   const [showAddSession, setShowAddSession] = useState(false);
+  const [sessionFilter, setSessionFilter] = useState('latest10');
   const [newSession, setNewSession] = useState({
     date: getToday(),
     pages: '',
@@ -80,6 +81,18 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
       minutes: ''
     });
     setShowAddSession(true);
+  };
+  const getFilteredSessions = (itemId) => {
+    const allSessions = readingSessions
+      .filter(s => s.bookId === itemId)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    if (sessionFilter === 'latest10') return allSessions.slice(0, 10);
+    if (sessionFilter === 'month') {
+      const now = new Date();
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      return allSessions.filter(s => s.date.startsWith(monthStr));
+    }
+    return allSessions;
   };
   const saveNewSession = () => {
     if (!editItem || !newSession.pages) return;
@@ -233,6 +246,25 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
                 </button>
               </div>
             </div>
+            <div className="flex gap-2 mb-3">
+              {[
+                { id: 'latest10', label: 'Latest 10' },
+                { id: 'month', label: 'This Month' },
+                { id: 'all', label: 'All' }
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setSessionFilter(option.id)}
+                  className={`px-2 py-1 rounded-lg text-xs ${
+                    sessionFilter === option.id
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-slate-900/40 text-slate-400'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <div className="h-28 mb-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={getWeeklyReadingData(editItem.id)}>
@@ -251,10 +283,7 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions 
               </ResponsiveContainer>
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {readingSessions
-                .filter(s => s.bookId === editItem.id)
-                .sort((a, b) => b.date.localeCompare(a.date))
-                .map((session) => (
+              {getFilteredSessions(editItem.id).map((session) => (
                   <div key={session.id} className="flex items-center justify-between text-sm bg-slate-900/40 rounded-lg px-3 py-2">
                     <div className="text-slate-300">
                       {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
