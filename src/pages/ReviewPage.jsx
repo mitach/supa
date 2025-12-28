@@ -17,6 +17,7 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
     let waterTotal = 0, waterCount = 0;
     let pagesTotal = 0;
     let pushupsTotal = 0;
+    let runDistanceTotal = 0;
     let workoutDays = 0, runDays = 0;
     let income = 0, expenses = 0;
     let loggedDays = 0;
@@ -43,6 +44,7 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
       if (dayMetrics?.water) { waterTotal += dayMetrics.water; waterCount++; }
       if (dayMetrics?.pages) pagesTotal += dayMetrics.pages;
       if (dayMetrics?.pushups) pushupsTotal += dayMetrics.pushups;
+      if (dayMetrics?.runDistance) runDistanceTotal += dayMetrics.runDistance;
 
       if (dayHabits?.workout) workoutDays++;
       if (dayHabits?.run) runDays++;
@@ -63,6 +65,7 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
       avgWater: waterCount ? (waterTotal / waterCount).toFixed(1) : 'n/a',
       totalPages: pagesTotal,
       totalPushups: pushupsTotal,
+      totalRunDistance: runDistanceTotal,
       avgScore: scoreCount ? Math.round(scoreTotal / scoreCount) : 0,
       workoutDays,
       runDays,
@@ -136,6 +139,10 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals }) => {
         <Card className="p-4">
           <div className="text-slate-400 text-sm">Push-ups</div>
           <div className="text-2xl font-bold text-amber-400">{stats.totalPushups.toLocaleString()}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-slate-400 text-sm">Run Distance</div>
+          <div className="text-2xl font-bold text-sky-400">{stats.totalRunDistance.toFixed(1)} km</div>
         </Card>
         <Card className="p-4">
           <div className="text-slate-400 text-sm">Workout Days</div>

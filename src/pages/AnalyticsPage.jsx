@@ -30,6 +30,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
         sleep: dayMetrics.sleep || 0,
         pages: dayMetrics.pages || 0,
         pushups: dayMetrics.pushups || 0,
+        runDistance: dayMetrics.runDistance || 0,
         nofap: dayHabits.nofap ? 1 : 0,
         workout: dayHabits.workout ? 1 : 0,
         score: calculateDailyScore(dayMetrics, dayHabits, goals, {}).score,
@@ -93,6 +94,34 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
     };
   }, [chartData, metrics]);
 
+  const runStats = useMemo(() => {
+    const periodTotal = chartData.reduce((sum, d) => sum + d.runDistance, 0);
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = `${currentYear}-01-01`;
+    const today = getToday();
+
+    let ytdTotal = 0;
+    const startOfYear = new Date(currentYear, 0, 1);
+    const now = new Date();
+    const daysInYearSoFar = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+
+    Object.keys(metrics).forEach(date => {
+      if (date >= yearStart && date <= today && metrics[date]?.runDistance) {
+        ytdTotal += metrics[date].runDistance;
+      }
+    });
+
+    const ytdAvgPerDay = daysInYearSoFar > 0 ? (ytdTotal / daysInYearSoFar).toFixed(2) : 0;
+
+    return {
+      periodTotal,
+      ytdTotal,
+      ytdAvgPerDay,
+      daysInYearSoFar
+    };
+  }, [chartData, metrics]);
+
   const noFapStreak = calculateStreak(habits, 'nofap');
   const bestNoFapStreak = useMemo(() => {
     let best = 0;
@@ -117,6 +146,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
     let runDays = 0;
     let keptWordDays = 0;
     let hardThingDays = 0;
+    let healthyEatingDays = 0;
     let loggedDays = 0;
 
     for (let i = 0; i < days; i++) {
@@ -128,6 +158,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
         if (dayHabits.run) runDays++;
         if (dayHabits.keptWord) keptWordDays++;
         if (dayHabits.hardThing) hardThingDays++;
+        if (dayHabits.healthyEating) healthyEatingDays++;
       }
     }
 
@@ -138,6 +169,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
       run: pct(runDays),
       keptWord: pct(keptWordDays),
       hardThing: pct(hardThingDays),
+      healthyEating: pct(healthyEatingDays),
       loggedDays
     };
   }, [habits, range]);
@@ -326,6 +358,40 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
       </Card>
 
       <Card className="p-4">
+        <div className="flex items-center gap-2 text-slate-400 mb-3">
+          <Icons.Activity /> Run Distance
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <div className="text-3xl font-bold text-white">{runStats.periodTotal.toFixed(1)} km</div>
+            <div className="text-slate-500 text-xs">{rangeConfig[range].label}</div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-amber-400">{runStats.ytdTotal.toFixed(1)} km</div>
+            <div className="text-slate-500 text-xs">Year to Date</div>
+          </div>
+        </div>
+        <div className="bg-slate-900/50 rounded-xl p-3 mb-3">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-sm">Daily avg (YTD)</span>
+            <span className="text-white font-semibold">{runStats.ytdAvgPerDay} km / day</span>
+          </div>
+        </div>
+        <div className="h-24">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData.slice(-14)}>
+              <XAxis dataKey="label" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} interval={1} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
+                labelStyle={{ color: '#94a3b8' }}
+              />
+              <Bar dataKey="runDistance" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      <Card className="p-4">
         <h3 className="text-slate-400 text-sm mb-4">Discipline Consistency</h3>
         <div className="space-y-3">
           {[
@@ -333,6 +399,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals }) => {
             { key: 'run', label: 'Run', value: habitStats.run },
             { key: 'keptWord', label: 'Kept Word', value: habitStats.keptWord },
             { key: 'hardThing', label: 'Hard Thing', value: habitStats.hardThing },
+            { key: 'healthyEating', label: 'Ate healthy (no sugar)', value: habitStats.healthyEating },
           ].map(({ key, label, value }) => (
             <div key={key}>
               <div className="flex justify-between text-sm mb-1">

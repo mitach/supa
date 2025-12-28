@@ -127,8 +127,13 @@ const TodayPage = ({
     const discParts = [];
     if (todayHabits.nofap) discParts.push(`NoFap day ${noFapStreak}`);
     if (todayHabits.workout) discParts.push('workout done');
-    if (todayHabits.run) discParts.push('run done');
+    if (todayHabits.run && todayMetrics.runDistance) {
+      discParts.push(`run ${todayMetrics.runDistance} km`);
+    } else if (todayHabits.run) {
+      discParts.push('run done');
+    }
     if (todayHabits.integrity) discParts.push('integrity kept');
+    if (todayHabits.healthyEating) discParts.push('ate healthy');
     if (discParts.length) parts.push(`Discipline: ${discParts.join(', ')}`);
 
     return parts.length ? parts.join('. ') + '.' : 'No data logged yet.';
@@ -271,6 +276,15 @@ const TodayPage = ({
             value={todayHabits.run}
             onChange={(v) => updateHabit('run', v)}
           />
+          {todayHabits.run && (
+            <MetricInput
+              label="Run Distance"
+              value={todayMetrics.runDistance}
+              onChange={(v) => updateMetric('runDistance', v)}
+              placeholder="0"
+              unit="km"
+            />
+          )}
           <HabitToggle
             label="Kept my word"
             value={todayHabits.keptWord}
@@ -285,6 +299,11 @@ const TodayPage = ({
             label="Acted with integrity"
             value={todayHabits.integrity}
             onChange={(v) => updateHabit('integrity', v)}
+          />
+          <HabitToggle
+            label="Ate healthy (no sugar)"
+            value={todayHabits.healthyEating}
+            onChange={(v) => updateHabit('healthyEating', v)}
           />
         </div>
       </div>

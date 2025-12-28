@@ -123,11 +123,16 @@ const LogPage = ({ metrics, habits, journals, setJournals, goals }) => {
             { key: 'keptWord', label: 'Kept Word' },
             { key: 'hardThing', label: 'Hard Thing' },
             { key: 'integrity', label: 'Integrity' },
+            { key: 'healthyEating', label: 'Ate healthy (no sugar)' },
           ].map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
               <span className="text-slate-300">{label}</span>
               <span className={dayHabits[key] ? 'text-emerald-400' : 'text-slate-600'}>
-                {dayHabits[key] ? 'Yes' : 'No'}
+                {dayHabits[key]
+                  ? key === 'run' && dayMetrics.runDistance
+                    ? `Yes (${dayMetrics.runDistance} km)`
+                    : 'Yes'
+                  : 'No'}
               </span>
             </div>
           ))}
