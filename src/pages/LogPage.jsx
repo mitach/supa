@@ -40,8 +40,12 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
 
   const dates = useMemo(() => {
     const result = [];
+    const year = new Date().getFullYear();
     for (let i = 0; i < 30; i++) {
-      result.push(getDaysAgo(i));
+      const date = getDaysAgo(i);
+      if (new Date(date).getFullYear() === year) {
+        result.push(date);
+      }
     }
     return result;
   }, []);

@@ -126,14 +126,23 @@ const MoneyPage = ({ transactions, setTransactions }) => {
 
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-start justify-between pt-2">
         <div>
           <h1 className="text-2xl font-bold text-white">Money</h1>
           <p className="text-slate-400 text-sm">Track income & expenses</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Icons.Plus />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            className="border border-slate-800"
+            onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'log' }))}
+          >
+            Edit Past Days
+          </Button>
+          <Button onClick={() => setShowAdd(true)}>
+            <Icons.Plus />
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 hide-scrollbar">

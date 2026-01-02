@@ -2,15 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Card, Icons, Modal } from './components';
 import AnalyticsPage from './pages/AnalyticsPage';
+import BodyPage from './pages/BodyPage';
+import CorePage from './pages/CorePage';
 import JournalPage from './pages/JournalPage';
 import LearningPage from './pages/LearningPage';
 import LibraryPage from './pages/LibraryPage';
 import LogPage from './pages/LogPage';
+import MindPage from './pages/MindPage';
 import MoneyPage from './pages/MoneyPage';
 import ReviewPage from './pages/ReviewPage';
 import SettingsPage from './pages/SettingsPage';
-import TodayPage from './pages/TodayPage';
 import { supabase } from './lib/supabaseClient';
+import { formatDate, generateId, getMonthStart, getToday, getWeekStart } from './utils';
 
   const defaultState = {
     metrics: {},
@@ -23,6 +26,8 @@ import { supabase } from './lib/supabaseClient';
     learningNotes: [],
     srsState: {},
     reviews: {},
+    weeklyGoals: {},
+    monthlyGoals: {},
     goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
     focusHabit: 'workout',
     onboardingComplete: false,
@@ -30,7 +35,7 @@ import { supabase } from './lib/supabaseClient';
   };
 
 export default function App() {
-  const [page, setPage] = useState('today');
+  const [page, setPage] = useState('body');
 
   const [metrics, setMetrics] = useState(defaultState.metrics);
   const [habits, setHabits] = useState(defaultState.habits);
@@ -42,6 +47,8 @@ export default function App() {
   const [learningNotes, setLearningNotes] = useState(defaultState.learningNotes);
   const [srsState, setSrsState] = useState(defaultState.srsState);
   const [reviews, setReviews] = useState(defaultState.reviews);
+  const [weeklyGoals, setWeeklyGoals] = useState(defaultState.weeklyGoals);
+  const [monthlyGoals, setMonthlyGoals] = useState(defaultState.monthlyGoals);
   const [goals, setGoals] = useState(defaultState.goals);
   const [focusHabit, setFocusHabit] = useState(defaultState.focusHabit);
   const [onboardingComplete, setOnboardingComplete] = useState(defaultState.onboardingComplete);
@@ -57,6 +64,10 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [showGoalsPrompt, setShowGoalsPrompt] = useState(false);
+  const [weeklyGoalDraft, setWeeklyGoalDraft] = useState('');
+  const [monthlyGoalDraft, setMonthlyGoalDraft] = useState('');
 
   const hasHydratedRef = useRef(false);
   const saveTimeoutRef = useRef(null);
@@ -95,9 +106,37 @@ export default function App() {
     );
   };
 
+  const normalizeGoals = (input) => {
+    if (!input) return {};
+    return Object.fromEntries(
+      Object.entries(input).map(([periodStart, entry]) => {
+        if (!entry) return [periodStart, entry];
+        const existingItems = Array.isArray(entry.items) ? entry.items : null;
+        if (existingItems) {
+          return [periodStart, { ...entry, items: existingItems }];
+        }
+        if (!entry.text) {
+          return [periodStart, { ...entry, items: [] }];
+        }
+        const items = entry.text
+          .split('\n')
+          .map(line => line.trim())
+          .filter(Boolean)
+          .map(text => ({
+            id: generateId(),
+            text,
+            doneAt: entry.completedAt || null
+          }));
+        return [periodStart, { ...entry, items }];
+      })
+    );
+  };
+
   const applyRemoteState = (data) => {
     const merged = { ...defaultState, ...data };
     const normalizedJournals = normalizeJournals(merged.journals);
+    const normalizedWeeklyGoals = normalizeGoals(merged.weeklyGoals);
+    const normalizedMonthlyGoals = normalizeGoals(merged.monthlyGoals);
     const allowedFocusHabits = new Set([
       'nofap',
       'workout',
@@ -119,6 +158,8 @@ export default function App() {
     setLearningNotes(merged.learningNotes || []);
     setSrsState(merged.srsState || {});
     setReviews(merged.reviews || {});
+    setWeeklyGoals(normalizedWeeklyGoals);
+    setMonthlyGoals(normalizedMonthlyGoals);
     setGoals(merged.goals || defaultState.goals);
     setFocusHabit(nextFocusHabit);
     setOnboardingComplete(Boolean(merged.onboardingComplete));
@@ -131,6 +172,7 @@ export default function App() {
     const loadState = async () => {
       if (!user) {
         hasHydratedRef.current = false;
+        setIsHydrated(false);
         return;
       }
       setSyncStatus('loading');
@@ -157,6 +199,7 @@ export default function App() {
       }
 
       hasHydratedRef.current = true;
+      setIsHydrated(true);
       setSyncStatus('idle');
     };
 
@@ -174,6 +217,8 @@ export default function App() {
     learningNotes,
     srsState,
     reviews,
+    weeklyGoals: normalizeGoals(weeklyGoals),
+    monthlyGoals: normalizeGoals(monthlyGoals),
     goals,
     focusHabit,
     onboardingComplete,
@@ -188,11 +233,59 @@ export default function App() {
     mediaSessions,
     learningNotes,
     srsState,
+    reviews,
+    weeklyGoals,
+    monthlyGoals,
     goals,
     focusHabit,
     onboardingComplete,
     focusAlertLast
   ]);
+
+  const today = getToday();
+  const weekStart = getWeekStart(today);
+  const monthStart = getMonthStart(today);
+  const currentWeeklyGoal = weeklyGoals?.[weekStart];
+  const currentMonthlyGoal = monthlyGoals?.[monthStart];
+  const hasWeeklyItems = (currentWeeklyGoal?.items || []).some(item => item?.text);
+  const hasMonthlyItems = (currentMonthlyGoal?.items || []).some(item => item?.text);
+
+  useEffect(() => {
+    if (!user || !isHydrated) {
+      setShowGoalsPrompt(false);
+      return;
+    }
+    const weeklyMissing = !hasWeeklyItems && !currentWeeklyGoal?.dismissedAt;
+    const monthlyMissing = !hasMonthlyItems && !currentMonthlyGoal?.dismissedAt;
+    if (weeklyMissing || monthlyMissing) {
+      const weeklyDraft = hasWeeklyItems
+        ? currentWeeklyGoal.items.map(item => item.text).join('\n')
+        : (currentWeeklyGoal?.text || '');
+      const monthlyDraft = hasMonthlyItems
+        ? currentMonthlyGoal.items.map(item => item.text).join('\n')
+        : (currentMonthlyGoal?.text || '');
+      setWeeklyGoalDraft(weeklyDraft);
+      setMonthlyGoalDraft(monthlyDraft);
+      setShowGoalsPrompt(true);
+    } else {
+      setShowGoalsPrompt(false);
+    }
+  }, [user, isHydrated, currentWeeklyGoal, currentMonthlyGoal, hasWeeklyItems, hasMonthlyItems]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (currentWeeklyGoal) return;
+    const d = new Date(today);
+    d.setDate(d.getDate() - d.getDay());
+    const legacyWeekStart = formatDate(d);
+    if (legacyWeekStart === weekStart) return;
+    const legacy = weeklyGoals?.[legacyWeekStart];
+    if (!legacy || legacy.dismissedAt) return;
+    setWeeklyGoals(prev => ({
+      ...prev,
+      [weekStart]: legacy
+    }));
+  }, [isHydrated, today, weekStart, currentWeeklyGoal, weeklyGoals]);
 
   useEffect(() => {
     if (!user || !hasHydratedRef.current) return;
@@ -215,17 +308,22 @@ export default function App() {
     };
   }, [combinedState, user]);
 
-  const navItems = [
-    { id: 'today', icon: <Icons.Home />, label: 'Today' },
-    { id: 'log', icon: <Icons.Calendar />, label: 'Log' },
+  const primaryNav = [
+    { id: 'body', icon: <Icons.Activity />, label: 'Body' },
+    { id: 'mind', icon: <Icons.Brain />, label: 'Mind' },
+    { id: 'core', icon: <Icons.Flame />, label: 'Core' },
     { id: 'money', icon: <Icons.DollarSign />, label: 'Money' },
-    { id: 'library', icon: <Icons.Book />, label: 'Library' },
-    { id: 'learning', icon: <Icons.Brain />, label: 'Learn' },
-    { id: 'journal', icon: <Icons.Edit />, label: 'Journal' },
-    { id: 'analytics', icon: <Icons.Chart />, label: 'Stats' },
     { id: 'review', icon: <Icons.Trophy />, label: 'Review' },
+  ];
+  const secondaryNav = [
+    { id: 'log', icon: <Icons.Calendar />, label: 'Log' },
+    { id: 'library', icon: <Icons.Book />, label: 'Library' },
+    { id: 'learning', icon: <Icons.Brain />, label: 'Learning' },
+    { id: 'journal', icon: <Icons.Edit />, label: 'Journal' },
+    { id: 'analytics', icon: <Icons.Chart />, label: 'Analytics' },
     { id: 'settings', icon: <Icons.Settings />, label: 'Settings' },
   ];
+  const secondaryNavIds = new Set(secondaryNav.map(item => item.id));
 
   const renderPage = () => {
     const props = {
@@ -239,13 +337,27 @@ export default function App() {
       learningNotes, setLearningNotes,
       srsState, setSrsState,
       reviews, setReviews,
+      weeklyGoals, setWeeklyGoals,
+      monthlyGoals, setMonthlyGoals,
       goals, setGoals,
       focusHabit, setFocusHabit,
       focusAlertLast, setFocusAlertLast
     };
 
     switch (page) {
-      case 'today': return <TodayPage {...props} />;
+      case 'body': return <BodyPage {...props} />;
+      case 'mind': return (
+        <MindPage
+          {...props}
+          journals={journals}
+          setJournals={setJournals}
+          readingSessions={readingSessions}
+          setReadingSessions={setReadingSessions}
+          library={library}
+          learningNotes={learningNotes}
+        />
+      );
+      case 'core': return <CorePage {...props} />;
       case 'log': return (
         <LogPage
           metrics={metrics}
@@ -288,7 +400,7 @@ export default function App() {
           }}
         />
       );
-      default: return <TodayPage {...props} />;
+      default: return <BodyPage {...props} />;
     }
   };
 
@@ -374,7 +486,7 @@ export default function App() {
       <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 safe-area-pb">
         <div className="max-w-lg mx-auto px-2">
           <div className="flex justify-around py-2">
-            {navItems.slice(0, 5).map((item) => (
+            {primaryNav.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setPage(item.id)}
@@ -389,11 +501,11 @@ export default function App() {
               </button>
             ))}
             <button
-              onClick={() => setPage(prevPage =>
-                ['journal', 'analytics', 'review', 'settings'].includes(prevPage) ? prevPage : 'analytics'
-              )}
+              onClick={() => setPage(prevPage => (
+                secondaryNavIds.has(prevPage) ? prevPage : 'log'
+              ))}
               className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
-                ['journal', 'analytics', 'review', 'settings'].includes(page)
+                secondaryNavIds.has(page)
                   ? 'text-amber-400'
                   : 'text-slate-500 hover:text-slate-300'
               }`}
@@ -405,10 +517,10 @@ export default function App() {
         </div>
       </nav>
 
-      {['journal', 'analytics', 'review', 'settings'].includes(page) && (
+      {secondaryNavIds.has(page) && (
         <div className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto bg-slate-800 rounded-2xl border border-slate-700 p-2 shadow-2xl z-40">
           <div className="grid grid-cols-4 gap-2">
-            {navItems.slice(5).map((item) => (
+            {secondaryNav.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setPage(item.id)}
@@ -425,6 +537,124 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={showGoalsPrompt}
+        onClose={() => {
+          const hasWeeklyItems = (currentWeeklyGoal?.items || []).some(item => item?.text);
+          const hasMonthlyItems = (currentMonthlyGoal?.items || []).some(item => item?.text);
+          if (!hasWeeklyItems && !currentWeeklyGoal?.dismissedAt) {
+            setWeeklyGoals(prev => ({
+              ...prev,
+              [weekStart]: { items: [], dismissedAt: today }
+            }));
+          }
+          if (!hasMonthlyItems && !currentMonthlyGoal?.dismissedAt) {
+            setMonthlyGoals(prev => ({
+              ...prev,
+              [monthStart]: { items: [], dismissedAt: today }
+            }));
+          }
+          setShowGoalsPrompt(false);
+        }}
+        title="Set Your Weekly/Monthly Goals"
+      >
+        <div className="space-y-4">
+          {!hasWeeklyItems && (
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Weekly goals (starting {weekStart})</label>
+              <textarea
+                value={weeklyGoalDraft}
+                onChange={(e) => setWeeklyGoalDraft(e.target.value)}
+                placeholder="One goal per line..."
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+                rows={4}
+              />
+            </div>
+          )}
+          {!hasMonthlyItems && (
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Monthly goals (starting {monthStart})</label>
+              <textarea
+                value={monthlyGoalDraft}
+                onChange={(e) => setMonthlyGoalDraft(e.target.value)}
+                placeholder="One goal per line..."
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+                rows={4}
+              />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => {
+                if (!hasWeeklyItems && !weeklyGoalDraft.trim()) {
+                  setWeeklyGoals(prev => ({
+                    ...prev,
+                    [weekStart]: { items: [], dismissedAt: today }
+                  }));
+                }
+                if (!hasMonthlyItems && !monthlyGoalDraft.trim()) {
+                  setMonthlyGoals(prev => ({
+                    ...prev,
+                    [monthStart]: { items: [], dismissedAt: today }
+                  }));
+                }
+                setShowGoalsPrompt(false);
+              }}
+            >
+              Skip for now
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                if (!hasWeeklyItems) {
+                  if (!weeklyGoalDraft.trim()) return;
+                  const items = weeklyGoalDraft
+                    .split('\n')
+                    .map(line => line.trim())
+                    .filter(Boolean)
+                    .map(text => ({ id: generateId(), text, doneAt: null }));
+                  setWeeklyGoals(prev => ({
+                    ...prev,
+                    [weekStart]: {
+                      items,
+                      savedAt: today,
+                      completedAt: null,
+                      dismissedAt: null
+                    }
+                  }));
+                }
+                if (!hasMonthlyItems) {
+                  if (!monthlyGoalDraft.trim()) return;
+                  const items = monthlyGoalDraft
+                    .split('\n')
+                    .map(line => line.trim())
+                    .filter(Boolean)
+                    .map(text => ({ id: generateId(), text, doneAt: null }));
+                  setMonthlyGoals(prev => ({
+                    ...prev,
+                    [monthStart]: {
+                      items,
+                      savedAt: today,
+                      completedAt: null,
+                      dismissedAt: null
+                    }
+                  }));
+                }
+                setShowGoalsPrompt(false);
+              }}
+              disabled={
+                (!hasWeeklyItems && !weeklyGoalDraft.trim())
+                || (!hasMonthlyItems && !monthlyGoalDraft.trim())
+              }
+            >
+              Save Goals
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={!onboardingComplete}

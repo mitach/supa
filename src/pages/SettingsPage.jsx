@@ -19,6 +19,10 @@ const SettingsPage = ({
   setSrsState,
   reviews,
   setReviews,
+  weeklyGoals,
+  setWeeklyGoals,
+  monthlyGoals,
+  setMonthlyGoals,
   mediaSessions,
   setMediaSessions,
   focusHabit,
@@ -54,6 +58,8 @@ const SettingsPage = ({
       learningNotes,
       srsState,
       reviews,
+      weeklyGoals,
+      monthlyGoals,
       mediaSessions,
       goals,
       focusHabit,
@@ -96,6 +102,8 @@ const SettingsPage = ({
         if (data.learningNotes) setLearningNotes(data.learningNotes);
         if (data.srsState) setSrsState(data.srsState);
         if (data.reviews) setReviews(data.reviews);
+        if (data.weeklyGoals) setWeeklyGoals(data.weeklyGoals);
+        if (data.monthlyGoals) setMonthlyGoals(data.monthlyGoals);
         if (data.goals) setGoals(data.goals);
         if (data.mediaSessions) setMediaSessions(data.mediaSessions);
         if (data.focusHabit) setFocusHabit(data.focusHabit);
