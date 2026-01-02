@@ -9,7 +9,6 @@ const calculateDailyScore = (dayMetrics, dayHabits, goals, dayJournal) => {
     { key: 'run', label: 'Run', points: 10 },
     { key: 'keptWord', label: 'Kept Word', points: 10 },
     { key: 'hardThing', label: 'Hard Thing', points: 10 },
-    { key: 'integrity', label: 'Integrity', points: 10 },
     { key: 'healthyEating', label: 'Healthy Eating', points: 10 },
   ];
 

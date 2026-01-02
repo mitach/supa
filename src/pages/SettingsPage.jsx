@@ -17,6 +17,8 @@ const SettingsPage = ({
   setLearningNotes,
   srsState,
   setSrsState,
+  reviews,
+  setReviews,
   mediaSessions,
   setMediaSessions,
   focusHabit,
@@ -37,7 +39,6 @@ const SettingsPage = ({
     { value: 'run', label: 'Run' },
     { value: 'keptWord', label: 'Kept my word' },
     { value: 'hardThing', label: 'Did a hard thing' },
-    { value: 'integrity', label: 'Acted with integrity' },
     { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
   ];
 
@@ -52,6 +53,7 @@ const SettingsPage = ({
       readingSessions,
       learningNotes,
       srsState,
+      reviews,
       mediaSessions,
       goals,
       focusHabit,
@@ -78,12 +80,22 @@ const SettingsPage = ({
         const data = JSON.parse(event.target.result);
         if (data.metrics) setMetrics(data.metrics);
         if (data.habits) setHabits(data.habits);
-        if (data.journals) setJournals(data.journals);
+        if (data.journals) {
+          const normalizedJournals = Object.fromEntries(
+            Object.entries(data.journals).map(([date, entry]) => {
+              if (!entry) return [date, entry];
+              const important = entry.important || entry.avoided || '';
+              return [date, { ...entry, important, avoided: undefined }];
+            })
+          );
+          setJournals(normalizedJournals);
+        }
         if (data.transactions) setTransactions(data.transactions);
         if (data.library) setLibrary(data.library);
         if (data.readingSessions) setReadingSessions(data.readingSessions);
         if (data.learningNotes) setLearningNotes(data.learningNotes);
         if (data.srsState) setSrsState(data.srsState);
+        if (data.reviews) setReviews(data.reviews);
         if (data.goals) setGoals(data.goals);
         if (data.mediaSessions) setMediaSessions(data.mediaSessions);
         if (data.focusHabit) setFocusHabit(data.focusHabit);

@@ -3,7 +3,17 @@ import { useMemo, useState } from 'react';
 import { Button, Card, Modal, TabBar } from '../components';
 import { calculateDailyScore, formatDate, getMonthStart, getToday, getWeekStart } from '../utils';
 
-const ReviewPage = ({ metrics, habits, transactions, journals, goals, focusHabit, readingSessions }) => {
+const ReviewPage = ({
+  metrics,
+  habits,
+  transactions,
+  journals,
+  goals,
+  focusHabit,
+  readingSessions,
+  reviews,
+  setReviews
+}) => {
   const [reviewType, setReviewType] = useState('weekly');
   const [showReviewForm, setShowReviewForm] = useState(false);
 
@@ -95,6 +105,9 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals, focusHabit
   const monthlyStats = getReviewStats(monthStart, today);
 
   const stats = reviewType === 'weekly' ? weeklyStats : monthlyStats;
+  const reviewPeriodStart = reviewType === 'weekly' ? weekStart : monthStart;
+  const reviewKey = `${reviewType}:${reviewPeriodStart}`;
+  const existingReview = reviews?.[reviewKey] || null;
 
   return (
     <div className="space-y-6 pb-24">
@@ -232,8 +245,38 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals, focusHabit
         </div>
       </Card>
 
+      {existingReview && (
+        <Card className="p-4">
+          <h3 className="font-semibold text-white mb-3">Your Reflection</h3>
+          {existingReview.win && (
+            <div className="mb-3">
+              <div className="text-amber-400 text-xs mb-1">Biggest win</div>
+              <div className="text-slate-300 text-sm whitespace-pre-wrap">{existingReview.win}</div>
+            </div>
+          )}
+          {existingReview.lesson && (
+            <div className="mb-3">
+              <div className="text-amber-400 text-xs mb-1">Lesson / failure</div>
+              <div className="text-slate-300 text-sm whitespace-pre-wrap">{existingReview.lesson}</div>
+            </div>
+          )}
+          {existingReview.standard && (
+            <div className="mb-3">
+              <div className="text-amber-400 text-xs mb-1">Standard to raise</div>
+              <div className="text-slate-300 text-sm whitespace-pre-wrap">{existingReview.standard}</div>
+            </div>
+          )}
+          {reviewType === 'monthly' && existingReview.yearReflection && (
+            <div>
+              <div className="text-violet-400 text-xs mb-1">If this repeats for a year...</div>
+              <div className="text-slate-300 text-sm whitespace-pre-wrap">{existingReview.yearReflection}</div>
+            </div>
+          )}
+        </Card>
+      )}
+
       <Button className="w-full" onClick={() => setShowReviewForm(true)}>
-        Write {reviewType === 'weekly' ? 'Weekly' : 'Monthly'} Review
+        {existingReview ? 'Edit' : 'Write'} {reviewType === 'weekly' ? 'Weekly' : 'Monthly'} Review
       </Button>
 
       <Modal
@@ -243,18 +286,30 @@ const ReviewPage = ({ metrics, habits, transactions, journals, goals, focusHabit
       >
         <ReviewForm
           type={reviewType}
-          onSave={() => setShowReviewForm(false)}
+          initial={existingReview}
+          onSave={(data) => {
+            setReviews(prev => ({
+              ...prev,
+              [reviewKey]: {
+                ...data,
+                type: reviewType,
+                periodStart: reviewPeriodStart,
+                savedAt: getToday()
+              }
+            }));
+            setShowReviewForm(false);
+          }}
         />
       </Modal>
     </div>
   );
 };
 
-const ReviewForm = ({ type, onSave }) => {
-  const [win, setWin] = useState('');
-  const [lesson, setLesson] = useState('');
-  const [standard, setStandard] = useState('');
-  const [yearReflection, setYearReflection] = useState('');
+const ReviewForm = ({ type, initial, onSave }) => {
+  const [win, setWin] = useState(initial?.win || '');
+  const [lesson, setLesson] = useState(initial?.lesson || '');
+  const [standard, setStandard] = useState(initial?.standard || '');
+  const [yearReflection, setYearReflection] = useState(initial?.yearReflection || '');
 
   return (
     <div className="space-y-4">
@@ -300,7 +355,10 @@ const ReviewForm = ({ type, onSave }) => {
           />
         </div>
       )}
-      <Button className="w-full" onClick={onSave}>
+      <Button
+        className="w-full"
+        onClick={() => onSave({ win, lesson, standard, yearReflection })}
+      >
         Save Review
       </Button>
     </div>

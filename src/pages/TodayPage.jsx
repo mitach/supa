@@ -37,7 +37,9 @@ const TodayPage = ({
   const [showFocusAlert, setShowFocusAlert] = useState(false);
   const [journalText, setJournalText] = useState(todayJournal.text || '');
   const [tilText, setTilText] = useState(todayJournal.til || '');
-  const [avoidedText, setAvoidedText] = useState(todayJournal.avoided || '');
+  const [importantText, setImportantText] = useState(
+    todayJournal.important || todayJournal.avoided || ''
+  );
 
   const updateMetric = (key, value) => {
     setMetrics(prev => ({
@@ -56,14 +58,14 @@ const TodayPage = ({
   const saveJournal = () => {
     setJournals(prev => ({
       ...prev,
-      [today]: { text: journalText, til: tilText, avoided: avoidedText }
+      [today]: { text: journalText, til: tilText, important: importantText }
     }));
   };
 
   useEffect(() => {
     const timeout = setTimeout(saveJournal, 500);
     return () => clearTimeout(timeout);
-  }, [journalText, tilText, avoidedText]);
+  }, [journalText, tilText, importantText]);
 
   useEffect(() => {
     if (!focusHabit) return;
@@ -141,7 +143,7 @@ const TodayPage = ({
     const bodyParts = [];
     if (todayMetrics.sleep) bodyParts.push(`${todayMetrics.sleep}h sleep`);
     if (todayMetrics.steps) bodyParts.push(`${todayMetrics.steps.toLocaleString()} steps`);
-    if (todayMetrics.water) bodyParts.push(`${todayMetrics.water}L water`);
+    if (todayMetrics.water) bodyParts.push('water goal met');
     if (bodyParts.length) parts.push(`Body: ${bodyParts.join(', ')}`);
 
     const mindParts = [];
@@ -157,7 +159,6 @@ const TodayPage = ({
     } else if (todayHabits.run) {
       discParts.push('run done');
     }
-    if (todayHabits.integrity) discParts.push('integrity kept');
     if (todayHabits.healthyEating) discParts.push('ate healthy');
     if (discParts.length) parts.push(`Discipline: ${discParts.join(', ')}`);
 
@@ -236,14 +237,10 @@ const TodayPage = ({
             placeholder="0"
             goal={goals?.steps || 10000}
           />
-          <MetricInput
-            label="Water"
-            value={todayMetrics.water}
-            onChange={(v) => updateMetric('water', v)}
-            placeholder="0"
-            unit="L"
-            goal={goals?.water || 1.5}
-            quickAdd={[0.25, 0.5, 1]}
+          <HabitToggle
+            label={`Water goal met (${goals?.water || 1.5}L)`}
+            value={Boolean(todayMetrics.water)}
+            onChange={(v) => updateMetric('water', v ? (goals?.water || 1.5) : null)}
           />
           <MetricInput
             label="Sleep"
@@ -311,12 +308,6 @@ const TodayPage = ({
             value={todayHabits.hardThing}
             onChange={(v) => updateHabit('hardThing', v)}
             isFocus={focusHabit === 'hardThing'}
-          />
-          <HabitToggle
-            label="Acted with integrity"
-            value={todayHabits.integrity}
-            onChange={(v) => updateHabit('integrity', v)}
-            isFocus={focusHabit === 'integrity'}
           />
           <HabitToggle
             label="Ate healthy (no sugar)"
@@ -450,11 +441,11 @@ const TodayPage = ({
           />
         </Card>
         <Card className="p-4">
-          <label className="text-slate-400 text-sm mb-2 block">Avoided something important?</label>
+          <label className="text-slate-400 text-sm mb-2 block">Something important happened today</label>
           <textarea
-            value={avoidedText}
-            onChange={(e) => setAvoidedText(e.target.value)}
-            placeholder="What did you avoid?"
+            value={importantText}
+            onChange={(e) => setImportantText(e.target.value)}
+            placeholder="What happened?"
             className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50 transition-all"
             rows={2}
           />
@@ -486,13 +477,25 @@ const TodayPage = ({
         onClose={() => setShowQuickAdd(null)}
         title="Add Reading Session"
       >
-        <ReadingSessionForm
-          books={library.filter(i => i.type === 'book' && i.status === 'in_progress')}
-          onSave={(s) => {
-            setReadingSessions(prev => [...prev, { ...s, id: generateId(), date: today }]);
-            setShowQuickAdd(null);
-          }}
-        />
+        {(() => {
+          const normalizeStatus = (status) => {
+            if (!status) return '';
+            return status.toString().toLowerCase().replace(/\s+/g, '_').replace(/-+/g, '_');
+          };
+          const bookItems = library.filter(i => i.type === 'book');
+          const inProgressBooks = bookItems.filter(i => normalizeStatus(i.status) === 'in_progress');
+          const plannedBooks = bookItems.filter(i => normalizeStatus(i.status) === 'planned' || !i.status);
+          const sessionBooks = inProgressBooks.length > 0 ? inProgressBooks : plannedBooks;
+          return (
+            <ReadingSessionForm
+              books={sessionBooks}
+              onSave={(s) => {
+                setReadingSessions(prev => [...prev, { ...s, id: generateId(), date: today }]);
+                setShowQuickAdd(null);
+              }}
+            />
+          );
+        })()}
       </Modal>
     </div>
   );

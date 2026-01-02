@@ -19,7 +19,7 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
   const [editJournal, setEditJournal] = useState({
     text: dayJournal.text || '',
     til: dayJournal.til || '',
-    avoided: dayJournal.avoided || ''
+    important: dayJournal.important || dayJournal.avoided || ''
   });
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
     setEditJournal({
       text: dayJournal.text || '',
       til: dayJournal.til || '',
-      avoided: dayJournal.avoided || ''
+      important: dayJournal.important || dayJournal.avoided || ''
     });
   }, [selectedDate, metrics, habits, journals]);
 
@@ -73,10 +73,10 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
     const cleanedHabits = Object.fromEntries(
       Object.entries(editHabits || {}).filter(([, value]) => value === true)
     );
-    const journalText = `${editJournal.text || ''}${editJournal.til || ''}${editJournal.avoided || ''}`;
+    const journalText = `${editJournal.text || ''}${editJournal.til || ''}${editJournal.important || ''}`;
     const hasJournal = journalText.trim().length > 0;
     const cleanedJournal = hasJournal
-      ? { text: editJournal.text, til: editJournal.til, avoided: editJournal.avoided }
+      ? { text: editJournal.text, til: editJournal.til, important: editJournal.important }
       : null;
 
     setMetrics(prev => {
@@ -189,7 +189,7 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
                 { key: 'steps', label: 'Steps', icon: <Icons.Activity /> },
-                { key: 'water', label: 'Water', unit: 'L', icon: <Icons.Droplet /> },
+                { key: 'water', label: 'Water Goal', icon: <Icons.Droplet /> },
                 { key: 'sleep', label: 'Sleep', unit: 'h', icon: <Icons.Moon /> },
                 { key: 'pages', label: 'Pages', icon: <Icons.Book /> },
                 { key: 'pushups', label: 'Push-ups', icon: <Icons.Dumbbell /> },
@@ -201,7 +201,9 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   <div className="text-xl font-bold text-white">
                     {key === 'pages'
                       ? dayPagesTotal || 'n/a'
-                      : dayMetrics[key] ?? 'n/a'}
+                      : key === 'water'
+                        ? dayMetrics.water != null ? 'Yes' : 'n/a'
+                        : dayMetrics[key] ?? 'n/a'}
                     {unit && dayMetrics[key] ? unit : ''}
                   </div>
                 </div>
@@ -215,7 +217,6 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                 { key: 'run', label: 'Run' },
                 { key: 'keptWord', label: 'Kept Word' },
                 { key: 'hardThing', label: 'Hard Thing' },
-                { key: 'integrity', label: 'Integrity' },
                 { key: 'healthyEating', label: 'Ate healthy (no sugar)' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
@@ -243,10 +244,10 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                 <p className="text-white">{dayJournal.til}</p>
               </div>
             )}
-            {dayJournal.avoided && (
+            {(dayJournal.important || dayJournal.avoided) && (
               <div className="bg-slate-900/50 rounded-xl p-4">
-                <div className="text-slate-400 text-sm mb-2">Avoided</div>
-                <p className="text-white">{dayJournal.avoided}</p>
+                <div className="text-slate-400 text-sm mb-2">Important</div>
+                <p className="text-white">{dayJournal.important || dayJournal.avoided}</p>
               </div>
             )}
 
@@ -269,12 +270,13 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   onChange={(v) => setEditMetrics(prev => ({ ...prev, steps: v }))}
                   placeholder="0"
                 />
-                <MetricInput
-                  label="Water"
-                  value={editMetrics.water}
-                  onChange={(v) => setEditMetrics(prev => ({ ...prev, water: v }))}
-                  placeholder="0"
-                  unit="L"
+                <HabitToggle
+                  label={`Water goal met (${goals?.water || 1.5}L)`}
+                  value={Boolean(editMetrics.water)}
+                  onChange={(v) => setEditMetrics(prev => ({
+                    ...prev,
+                    water: v ? (goals?.water || 1.5) : null
+                  }))}
                 />
                 <MetricInput
                   label="Sleep"
@@ -378,11 +380,6 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   onChange={(v) => setEditHabits(prev => ({ ...prev, hardThing: v }))}
                 />
                 <HabitToggle
-                  label="Acted with integrity"
-                  value={editHabits.integrity}
-                  onChange={(v) => setEditHabits(prev => ({ ...prev, integrity: v }))}
-                />
-                <HabitToggle
                   label="Ate healthy (no sugar)"
                   value={editHabits.healthyEating}
                   onChange={(v) => setEditHabits(prev => ({ ...prev, healthyEating: v }))}
@@ -414,11 +411,11 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Avoided something important?</label>
+                  <label className="text-slate-400 text-sm mb-2 block">Something important happened today</label>
                   <textarea
-                    value={editJournal.avoided}
-                    onChange={(e) => setEditJournal(prev => ({ ...prev, avoided: e.target.value }))}
-                    placeholder="What did you avoid?"
+                    value={editJournal.important}
+                    onChange={(e) => setEditJournal(prev => ({ ...prev, important: e.target.value }))}
+                    placeholder="What happened?"
                     className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
                     rows={2}
                   />

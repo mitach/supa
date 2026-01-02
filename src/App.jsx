@@ -12,21 +12,22 @@ import SettingsPage from './pages/SettingsPage';
 import TodayPage from './pages/TodayPage';
 import { supabase } from './lib/supabaseClient';
 
-const defaultState = {
-  metrics: {},
-  habits: {},
-  journals: {},
-  transactions: [],
-  library: [],
-  readingSessions: [],
-  mediaSessions: [],
-  learningNotes: [],
-  srsState: {},
-  goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
-  focusHabit: 'workout',
-  onboardingComplete: false,
-  focusAlertLast: ''
-};
+  const defaultState = {
+    metrics: {},
+    habits: {},
+    journals: {},
+    transactions: [],
+    library: [],
+    readingSessions: [],
+    mediaSessions: [],
+    learningNotes: [],
+    srsState: {},
+    reviews: {},
+    goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
+    focusHabit: 'workout',
+    onboardingComplete: false,
+    focusAlertLast: ''
+  };
 
 export default function App() {
   const [page, setPage] = useState('today');
@@ -40,6 +41,7 @@ export default function App() {
   const [mediaSessions, setMediaSessions] = useState(defaultState.mediaSessions);
   const [learningNotes, setLearningNotes] = useState(defaultState.learningNotes);
   const [srsState, setSrsState] = useState(defaultState.srsState);
+  const [reviews, setReviews] = useState(defaultState.reviews);
   const [goals, setGoals] = useState(defaultState.goals);
   const [focusHabit, setFocusHabit] = useState(defaultState.focusHabit);
   const [onboardingComplete, setOnboardingComplete] = useState(defaultState.onboardingComplete);
@@ -82,23 +84,47 @@ export default function App() {
     };
   }, []);
 
+  const normalizeJournals = (input) => {
+    if (!input) return {};
+    return Object.fromEntries(
+      Object.entries(input).map(([date, entry]) => {
+        if (!entry) return [date, entry];
+        const important = entry.important || entry.avoided || '';
+        return [date, { ...entry, important, avoided: undefined }];
+      })
+    );
+  };
+
   const applyRemoteState = (data) => {
     const merged = { ...defaultState, ...data };
+    const normalizedJournals = normalizeJournals(merged.journals);
+    const allowedFocusHabits = new Set([
+      'nofap',
+      'workout',
+      'run',
+      'keptWord',
+      'hardThing',
+      'healthyEating'
+    ]);
+    const nextFocusHabit = allowedFocusHabits.has(merged.focusHabit)
+      ? merged.focusHabit
+      : defaultState.focusHabit;
     setMetrics(merged.metrics || {});
     setHabits(merged.habits || {});
-    setJournals(merged.journals || {});
+    setJournals(normalizedJournals);
     setTransactions(merged.transactions || []);
     setLibrary(merged.library || []);
     setReadingSessions(merged.readingSessions || []);
     setMediaSessions(merged.mediaSessions || []);
     setLearningNotes(merged.learningNotes || []);
     setSrsState(merged.srsState || {});
+    setReviews(merged.reviews || {});
     setGoals(merged.goals || defaultState.goals);
-    setFocusHabit(merged.focusHabit || defaultState.focusHabit);
+    setFocusHabit(nextFocusHabit);
     setOnboardingComplete(Boolean(merged.onboardingComplete));
     setFocusAlertLast(merged.focusAlertLast || '');
     setOnboardingGoals(merged.goals || defaultState.goals);
-    setOnboardingFocus(merged.focusHabit || defaultState.focusHabit);
+    setOnboardingFocus(nextFocusHabit);
   };
 
   useEffect(() => {
@@ -140,13 +166,14 @@ export default function App() {
   const combinedState = useMemo(() => ({
     metrics,
     habits,
-    journals,
+    journals: normalizeJournals(journals),
     transactions,
     library,
     readingSessions,
     mediaSessions,
     learningNotes,
     srsState,
+    reviews,
     goals,
     focusHabit,
     onboardingComplete,
@@ -211,6 +238,7 @@ export default function App() {
       mediaSessions, setMediaSessions,
       learningNotes, setLearningNotes,
       srsState, setSrsState,
+      reviews, setReviews,
       goals, setGoals,
       focusHabit, setFocusHabit,
       focusAlertLast, setFocusAlertLast
@@ -244,6 +272,8 @@ export default function App() {
           goals={goals}
           readingSessions={readingSessions}
           focusHabit={focusHabit}
+          reviews={reviews}
+          setReviews={setReviews}
         />
       );
       case 'settings': return (
@@ -466,7 +496,6 @@ export default function App() {
                   { value: 'run', label: 'Run' },
                   { value: 'keptWord', label: 'Kept my word' },
                   { value: 'hardThing', label: 'Did a hard thing' },
-                  { value: 'integrity', label: 'Acted with integrity' },
                   { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
                 ].map((habit) => (
                   <option key={habit.value} value={habit.value}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
 import { Button, Card, Icons, LibraryForm, Modal } from '../components';
@@ -6,6 +6,8 @@ import { formatDate, generateId, getToday } from '../utils';
 
 const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions, mediaSessions, setMediaSessions }) => {
   const [filter, setFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [editSession, setEditSession] = useState(null);
@@ -26,10 +28,52 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
   });
 
   const types = ['all', 'book', 'movie', 'series', 'article', 'course', 'podcast'];
+  const FILTER_STORAGE_KEY = 'progress_library_filters';
+  const statusOptions = [
+    { id: 'all', label: 'All' },
+    { id: 'planned', label: 'Planned' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'finished', label: 'Finished' }
+  ];
 
-  const filteredItems = library.filter(item =>
-    filter === 'all' || item.type === filter
-  );
+  const getStatusValue = (item) => item.status || 'planned';
+  const statusCounts = useMemo(() => {
+    const counts = { all: library.length, planned: 0, in_progress: 0, finished: 0 };
+    library.forEach(item => {
+      const status = getStatusValue(item);
+      if (counts[status] !== undefined) counts[status] += 1;
+    });
+    return counts;
+  }, [library]);
+  const filteredItems = library.filter(item => {
+    const matchesType = filter === 'all' || item.type === filter;
+    const statusValue = getStatusValue(item);
+    const matchesStatus = statusFilter === 'all' || statusValue === statusFilter;
+    const haystack = `${item.title || ''} ${item.tags || ''} ${item.notes || ''}`.toLowerCase();
+    const matchesSearch = haystack.includes(search.trim().toLowerCase());
+    return matchesType && matchesStatus && matchesSearch;
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      if (data.filter) setFilter(data.filter);
+      if (data.statusFilter) setStatusFilter(data.statusFilter);
+      if (typeof data.search === 'string') setSearch(data.search);
+    } catch {
+      // Ignore malformed storage values.
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+      filter,
+      statusFilter,
+      search
+    }));
+  }, [filter, statusFilter, search]);
 
   const getItemPages = (itemId) => {
     return readingSessions
@@ -258,6 +302,31 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
         </Button>
       </div>
 
+      <div className="space-y-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search titles, tags, notes..."
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+        />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {statusOptions.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => setStatusFilter(option.id)}
+              className={`px-3 py-1 rounded-full text-xs whitespace-nowrap ${
+                statusFilter === option.id
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {option.label} ({statusCounts[option.id] ?? 0})
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 hide-scrollbar">
         {types.map((type) => (
           <button
@@ -346,7 +415,9 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
 
         {filteredItems.length === 0 && (
           <div className="text-center py-12 text-slate-500">
-            No items in library. Add your first one!
+            {library.length === 0
+              ? 'No items in library. Add your first one!'
+              : 'No items match your filters.'}
           </div>
         )}
       </div>
