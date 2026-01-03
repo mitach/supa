@@ -72,6 +72,14 @@ export default function App() {
   const [showGoalsPrompt, setShowGoalsPrompt] = useState(false);
   const [weeklyGoalDraft, setWeeklyGoalDraft] = useState('');
   const [monthlyGoalDraft, setMonthlyGoalDraft] = useState('');
+  const [recentPages, setRecentPages] = useState(() => {
+    try {
+      const stored = localStorage.getItem('progress_recent_pages');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const hasHydratedRef = useRef(false);
   const saveTimeoutRef = useRef(null);
@@ -334,6 +342,23 @@ export default function App() {
     { id: 'settings', icon: <Icons.Settings />, label: 'Settings' },
   ];
   const secondaryNavIds = new Set(secondaryNav.map(item => item.id));
+  const secondaryNavMap = useMemo(() => {
+    return new Map(secondaryNav.map(item => [item.id, item]));
+  }, [secondaryNav]);
+  const [showMore, setShowMore] = useState(false);
+
+  useEffect(() => {
+    setRecentPages(prev => {
+      const next = [page, ...prev.filter(id => id !== page)].slice(0, 5);
+      localStorage.setItem('progress_recent_pages', JSON.stringify(next));
+      return next;
+    });
+  }, [page]);
+
+  useEffect(() => {
+    if (!showMore) return;
+    return () => {};
+  }, [showMore]);
 
   const renderPage = () => {
     const props = {
@@ -513,11 +538,9 @@ export default function App() {
               </button>
             ))}
             <button
-              onClick={() => setPage(prevPage => (
-                secondaryNavIds.has(prevPage) ? prevPage : 'log'
-              ))}
+              onClick={() => setShowMore(prev => !prev)}
               className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
-                secondaryNavIds.has(page)
+                showMore || secondaryNavIds.has(page)
                   ? 'text-amber-400'
                   : 'text-slate-500 hover:text-slate-300'
               }`}
@@ -529,23 +552,121 @@ export default function App() {
         </div>
       </nav>
 
-      {secondaryNavIds.has(page) && (
-        <div className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto bg-slate-800 rounded-2xl border border-slate-700 p-2 shadow-2xl z-40">
-          <div className="grid grid-cols-4 gap-2">
-            {secondaryNav.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setPage(item.id)}
-                className={`flex flex-col items-center py-3 px-4 rounded-xl transition-all ${
-                  page === item.id
-                    ? 'bg-amber-500/20 text-amber-400'
-                    : 'text-slate-400 hover:bg-slate-700'
-                }`}
-              >
-                {item.icon}
-                <span className="text-xs mt-1">{item.label}</span>
-              </button>
-            ))}
+      {showMore && (
+        <div className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto bg-slate-800 rounded-2xl border border-slate-700 p-4 shadow-2xl z-40">
+          <div className="space-y-4">
+            <div>
+              <div className="text-slate-500 text-xs uppercase tracking-wider mb-2">Recent</div>
+              <div className="space-y-2">
+                {recentPages.filter(id => secondaryNavIds.has(id)).slice(0, 3).map((id) => {
+                  const item = secondaryNavMap.get(id);
+                  if (!item) return null;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setPage(item.id);
+                        setShowMore(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 text-slate-200 hover:bg-slate-700/70 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">{item.icon}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">Last used</span>
+                    </button>
+                  );
+                })}
+                {recentPages.filter(id => secondaryNavIds.has(id)).length === 0 && (
+                  <div className="text-slate-500 text-sm">No recent pages yet.</div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500 text-xs uppercase tracking-wider mb-2">Review</div>
+              <div className="space-y-2">
+                {['review', 'log'].map((id) => {
+                  const item = secondaryNavMap.get(id);
+                  if (!item) return null;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setPage(item.id);
+                        setShowMore(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 text-slate-200 hover:bg-slate-700/70 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">{item.icon}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {item.id === 'review' ? 'Weekly + monthly' : 'Edit past days'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500 text-xs uppercase tracking-wider mb-2">Knowledge</div>
+              <div className="space-y-2">
+                {['library', 'learning', 'journal'].map((id) => {
+                  const item = secondaryNavMap.get(id);
+                  if (!item) return null;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setPage(item.id);
+                        setShowMore(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 text-slate-200 hover:bg-slate-700/70 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">{item.icon}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {item.id === 'library' ? 'Track media' : item.id === 'learning' ? 'Notes + SRS' : 'Daily writing'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500 text-xs uppercase tracking-wider mb-2">System</div>
+              <div className="space-y-2">
+                {['analytics', 'settings'].map((id) => {
+                  const item = secondaryNavMap.get(id);
+                  if (!item) return null;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setPage(item.id);
+                        setShowMore(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 text-slate-200 hover:bg-slate-700/70 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">{item.icon}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {item.id === 'analytics' ? 'Deep stats' : 'App setup'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -102,6 +102,20 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
       .filter(s => s.itemId === itemId)
       .reduce((sum, s) => sum + (s.episodesWatched || 0), 0);
   };
+  const getSeriesEpisodesCompletedWithOverride = (itemId, sessionId, nextEpisodes) => {
+    return mediaSessions
+      .filter(s => s.itemId === itemId && s.id !== sessionId)
+      .reduce((sum, s) => sum + (s.episodesWatched || 0), 0) + (nextEpisodes || 0);
+  };
+  const isSeriesComplete = (item) => {
+    if (!item.progressTotal) return false;
+    const completed = getSeriesEpisodesCompleted(item.id);
+    return completed >= item.progressTotal;
+  };
+  const isCourseComplete = (item) => {
+    if (!item.progressTotal) return false;
+    return (item.progressCompleted || 0) >= item.progressTotal;
+  };
   const getProgressSummary = (item) => {
     const config = progressConfig[item.type];
     if (!config) return '';
@@ -185,20 +199,39 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
   };
   const saveNewMediaSession = () => {
     if (!editItem || !newMediaSession.durationMinutes) return;
+    const totalEpisodes = editItem.type === 'series'
+      ? (getSeriesEpisodesCompleted(editItem.id) + (newMediaSession.episodesWatched ? Number(newMediaSession.episodesWatched) : 0))
+      : null;
+    const nextSession = {
+      id: generateId(),
+      itemId: editItem.id,
+      date: newMediaSession.date,
+      durationMinutes: Number(newMediaSession.durationMinutes),
+      episodesWatched: newMediaSession.episodesWatched ? Number(newMediaSession.episodesWatched) : undefined
+    };
     setMediaSessions(prev => [
       ...prev,
-      {
-        id: generateId(),
-        itemId: editItem.id,
-        date: newMediaSession.date,
-        durationMinutes: Number(newMediaSession.durationMinutes),
-        episodesWatched: newMediaSession.episodesWatched ? Number(newMediaSession.episodesWatched) : undefined
-      }
+      nextSession
     ]);
+    if (editItem.type === 'series' && editItem.progressTotal && totalEpisodes !== null && totalEpisodes >= editItem.progressTotal) {
+      setLibrary(prev => prev.map(item => (
+        item.id === editItem.id ? { ...item, status: 'finished' } : item
+      )));
+    } else if (editItem.status !== 'in_progress') {
+      setLibrary(prev => prev.map(item => (
+        item.id === editItem.id ? { ...item, status: 'in_progress' } : item
+      )));
+    }
     setShowAddMediaSession(false);
   };
   const saveMediaSession = () => {
     if (!editMediaSession) return;
+    const nextEpisodes = editMediaSession.episodesWatched
+      ? Number(editMediaSession.episodesWatched)
+      : 0;
+    const totalEpisodes = editItem?.type === 'series'
+      ? getSeriesEpisodesCompletedWithOverride(editItem.id, editMediaSession.id, nextEpisodes)
+      : null;
     setMediaSessions(prev => prev.map(s =>
       s.id === editMediaSession.id
         ? {
@@ -209,6 +242,17 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
           }
         : s
     ));
+    if (editItem) {
+      if (editItem.type === 'series' && editItem.progressTotal && totalEpisodes !== null && totalEpisodes >= editItem.progressTotal) {
+        setLibrary(prev => prev.map(item => (
+          item.id === editItem.id ? { ...item, status: 'finished' } : item
+        )));
+      } else if (editItem.status !== 'in_progress') {
+        setLibrary(prev => prev.map(item => (
+          item.id === editItem.id ? { ...item, status: 'in_progress' } : item
+        )));
+      }
+    }
     setEditMediaSession(null);
   };
   const deleteMediaSession = (id) => {
@@ -268,6 +312,11 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
         durationMinutes: totalMinutes || undefined
       }
     ]);
+    if (editItem.status !== 'in_progress') {
+      setLibrary(prev => prev.map(item => (
+        item.id === editItem.id ? { ...item, status: 'in_progress' } : item
+      )));
+    }
     setShowAddSession(false);
   };
   const updateSession = () => {
@@ -283,6 +332,11 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
           }
         : s
     ));
+    if (editItem && editItem.status !== 'in_progress') {
+      setLibrary(prev => prev.map(item => (
+        item.id === editItem.id ? { ...item, status: 'in_progress' } : item
+      )));
+    }
     setEditSession(null);
   };
   const deleteSession = (id) => {
@@ -430,10 +484,17 @@ const LibraryPage = ({ library, setLibrary, readingSessions, setReadingSessions,
         <LibraryForm
           initial={editItem}
           onSave={(item) => {
+            const nextItem = editItem ? { ...editItem, ...item } : { ...item, id: generateId() };
+            if (nextItem.type === 'series' && isSeriesComplete(nextItem)) {
+              nextItem.status = 'finished';
+            }
+            if (nextItem.type === 'course' && isCourseComplete(nextItem)) {
+              nextItem.status = 'finished';
+            }
             if (editItem) {
-              setLibrary(prev => prev.map(i => i.id === editItem.id ? { ...i, ...item } : i));
+              setLibrary(prev => prev.map(i => i.id === editItem.id ? nextItem : i));
             } else {
-              setLibrary(prev => [...prev, { ...item, id: generateId() }]);
+              setLibrary(prev => [...prev, nextItem]);
             }
             setShowAdd(false);
             setEditItem(null);
