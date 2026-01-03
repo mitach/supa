@@ -28,6 +28,8 @@ import { formatDate, generateId, getMonthStart, getToday, getWeekStart } from '.
     reviews: {},
     weeklyGoals: {},
     monthlyGoals: {},
+    gameSessions: [],
+    gameLimitMinutes: 420,
     goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
     focusHabit: 'workout',
     onboardingComplete: false,
@@ -49,6 +51,8 @@ export default function App() {
   const [reviews, setReviews] = useState(defaultState.reviews);
   const [weeklyGoals, setWeeklyGoals] = useState(defaultState.weeklyGoals);
   const [monthlyGoals, setMonthlyGoals] = useState(defaultState.monthlyGoals);
+  const [gameSessions, setGameSessions] = useState(defaultState.gameSessions);
+  const [gameLimitMinutes, setGameLimitMinutes] = useState(defaultState.gameLimitMinutes);
   const [goals, setGoals] = useState(defaultState.goals);
   const [focusHabit, setFocusHabit] = useState(defaultState.focusHabit);
   const [onboardingComplete, setOnboardingComplete] = useState(defaultState.onboardingComplete);
@@ -160,6 +164,8 @@ export default function App() {
     setReviews(merged.reviews || {});
     setWeeklyGoals(normalizedWeeklyGoals);
     setMonthlyGoals(normalizedMonthlyGoals);
+    setGameSessions(merged.gameSessions || []);
+    setGameLimitMinutes(merged.gameLimitMinutes || defaultState.gameLimitMinutes);
     setGoals(merged.goals || defaultState.goals);
     setFocusHabit(nextFocusHabit);
     setOnboardingComplete(Boolean(merged.onboardingComplete));
@@ -219,6 +225,8 @@ export default function App() {
     reviews,
     weeklyGoals: normalizeGoals(weeklyGoals),
     monthlyGoals: normalizeGoals(monthlyGoals),
+    gameSessions,
+    gameLimitMinutes,
     goals,
     focusHabit,
     onboardingComplete,
@@ -236,6 +244,8 @@ export default function App() {
     reviews,
     weeklyGoals,
     monthlyGoals,
+    gameSessions,
+    gameLimitMinutes,
     goals,
     focusHabit,
     onboardingComplete,
@@ -339,6 +349,8 @@ export default function App() {
       reviews, setReviews,
       weeklyGoals, setWeeklyGoals,
       monthlyGoals, setMonthlyGoals,
+      gameSessions, setGameSessions,
+      gameLimitMinutes, setGameLimitMinutes,
       goals, setGoals,
       focusHabit, setFocusHabit,
       focusAlertLast, setFocusAlertLast

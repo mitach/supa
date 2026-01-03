@@ -23,6 +23,10 @@ const SettingsPage = ({
   setWeeklyGoals,
   monthlyGoals,
   setMonthlyGoals,
+  gameSessions,
+  setGameSessions,
+  gameLimitMinutes,
+  setGameLimitMinutes,
   mediaSessions,
   setMediaSessions,
   focusHabit,
@@ -60,6 +64,8 @@ const SettingsPage = ({
       reviews,
       weeklyGoals,
       monthlyGoals,
+      gameSessions,
+      gameLimitMinutes,
       mediaSessions,
       goals,
       focusHabit,
@@ -104,6 +110,8 @@ const SettingsPage = ({
         if (data.reviews) setReviews(data.reviews);
         if (data.weeklyGoals) setWeeklyGoals(data.weeklyGoals);
         if (data.monthlyGoals) setMonthlyGoals(data.monthlyGoals);
+        if (data.gameSessions) setGameSessions(data.gameSessions);
+        if (data.gameLimitMinutes) setGameLimitMinutes(data.gameLimitMinutes);
         if (data.goals) setGoals(data.goals);
         if (data.mediaSessions) setMediaSessions(data.mediaSessions);
         if (data.focusHabit) setFocusHabit(data.focusHabit);

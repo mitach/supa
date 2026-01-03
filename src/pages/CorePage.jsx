@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { Button, Card, HabitToggle, Modal } from '../components';
-import { calculateStreak, generateId, getDaysAgo, getMonthStart, getToday, getWeekStart } from '../utils';
+import { calculateStreak, formatDate, generateId, getDaysAgo, getMonthStart, getToday, getWeekStart } from '../utils';
 
 const CorePage = ({
   habits,
@@ -10,7 +10,11 @@ const CorePage = ({
   weeklyGoals,
   setWeeklyGoals,
   monthlyGoals,
-  setMonthlyGoals
+  setMonthlyGoals,
+  gameSessions,
+  setGameSessions,
+  gameLimitMinutes,
+  setGameLimitMinutes
 }) => {
   const today = getToday();
   const weekStart = getWeekStart(today);
@@ -29,6 +33,12 @@ const CorePage = ({
     monthlyItems.map(item => item.text).join('\n')
   );
   const [historyDate, setHistoryDate] = useState(today);
+  const [showGameModal, setShowGameModal] = useState(false);
+  const [newGameSession, setNewGameSession] = useState({
+    date: today,
+    hours: '',
+    minutes: ''
+  });
 
   const todayHabits = habits[today] || {};
 
@@ -96,6 +106,26 @@ const CorePage = ({
       .sort((a, b) => b[0].localeCompare(a[0]))
       .slice(0, 6);
   }, [monthlyGoals]);
+
+  const weekStartDate = new Date(weekStart);
+  const weekEnd = new Date(weekStartDate);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = formatDate(weekEnd);
+  const weeklyGameSessions = useMemo(() => {
+    return (gameSessions || []).filter(session =>
+      session.date >= weekStart && session.date <= weekEndStr
+    );
+  }, [gameSessions, weekStart, weekEndStr]);
+  const weeklyGameMinutes = weeklyGameSessions.reduce((sum, session) => sum + (session.minutes || 0), 0);
+  const weeklyGameHours = weeklyGameMinutes / 60;
+  const gameProgressPct = gameLimitMinutes > 0
+    ? Math.min(100, Math.round((weeklyGameMinutes / gameLimitMinutes) * 100))
+    : 0;
+  const recentGameSessions = useMemo(() => {
+    return [...(gameSessions || [])]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 6);
+  }, [gameSessions]);
 
   return (
     <div className="space-y-6 pb-24">
@@ -330,6 +360,63 @@ const CorePage = ({
         />
       </Card>
 
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider px-1">Gaming</h3>
+          <Button variant="secondary" className="px-3 py-2" onClick={() => {
+            setNewGameSession({ date: today, hours: '', minutes: '' });
+            setShowGameModal(true);
+          }}>
+            Add Session
+          </Button>
+        </div>
+        <div className="flex items-center justify-between text-sm text-slate-400">
+          <span>This week</span>
+          <span className="text-white font-semibold">{weeklyGameHours.toFixed(1)}h / {(gameLimitMinutes / 60).toFixed(0)}h</span>
+        </div>
+        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              gameProgressPct >= 100 ? 'bg-red-500' : 'bg-amber-400'
+            }`}
+            style={{ width: `${gameProgressPct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Weekly limit</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={Math.round(gameLimitMinutes / 60)}
+              onChange={(e) => setGameLimitMinutes(Math.max(0, Number(e.target.value)) * 60)}
+              className="w-16 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-white text-right"
+            />
+            <span>hours</span>
+          </div>
+        </div>
+        {recentGameSessions.length > 0 && (
+          <div className="space-y-2">
+            {recentGameSessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2 text-sm">
+                <span className="text-slate-300">
+                  {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">{(session.minutes / 60).toFixed(1)}h</span>
+                  <button
+                    className="text-xs text-red-400 hover:text-red-300"
+                    onClick={() => setGameSessions(prev => prev.filter(s => s.id !== session.id))}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Card className="p-4">
         <h3 className="text-slate-400 text-sm mb-3">7-day Summary</h3>
         <div className="grid grid-cols-2 gap-3 text-center">
@@ -519,6 +606,62 @@ const CorePage = ({
             disabled={!weeklyGoalDraft.trim() && !monthlyGoalDraft.trim()}
           >
             Save Goals
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        title="Add Gaming Session"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-slate-400 text-sm mb-2 block">Date</label>
+            <input
+              type="date"
+              value={newGameSession.date}
+              onChange={(e) => setNewGameSession(prev => ({ ...prev, date: e.target.value }))}
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+          <div>
+            <label className="text-slate-400 text-sm mb-2 block">Duration</label>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number"
+                value={newGameSession.hours}
+                onChange={(e) => setNewGameSession(prev => ({ ...prev, hours: e.target.value }))}
+                placeholder="Hours"
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+              <input
+                type="number"
+                value={newGameSession.minutes}
+                onChange={(e) => setNewGameSession(prev => ({ ...prev, minutes: e.target.value }))}
+                placeholder="Minutes"
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => {
+              const totalMinutes = (Number(newGameSession.hours) || 0) * 60 + (Number(newGameSession.minutes) || 0);
+              if (!totalMinutes) return;
+              setGameSessions(prev => ([
+                ...prev,
+                {
+                  id: generateId(),
+                  date: newGameSession.date,
+                  minutes: totalMinutes
+                }
+              ]));
+              setShowGameModal(false);
+            }}
+            disabled={!Number(newGameSession.hours) && !Number(newGameSession.minutes)}
+          >
+            Save Session
           </Button>
         </div>
       </Modal>

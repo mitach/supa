@@ -16,6 +16,7 @@ const ReviewPage = ({
 }) => {
   const [reviewType, setReviewType] = useState('weekly');
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewSeed, setReviewSeed] = useState(null);
 
   const today = getToday();
   const weekStart = getWeekStart(today);
@@ -108,6 +109,37 @@ const ReviewPage = ({
   const reviewPeriodStart = reviewType === 'weekly' ? weekStart : monthStart;
   const reviewKey = `${reviewType}:${reviewPeriodStart}`;
   const existingReview = reviews?.[reviewKey] || null;
+
+  const autoSummary = useMemo(() => {
+    const periodLabel = reviewType === 'weekly' ? 'Week' : 'Month';
+    const daysTotal = reviewType === 'weekly' ? 7 : 30;
+    const loggedPct = Math.round((stats.loggedDays / daysTotal) * 100);
+    const focusSummary = focusHabit && stats.focusHabitPct !== null
+      ? ` Focus habit hit ${stats.focusHabitPct}%.`
+      : '';
+    const netLabel = stats.net >= 0 ? `Saved $${stats.net.toFixed(0)}.` : `Overspent $${Math.abs(stats.net).toFixed(0)}.`;
+    return `${periodLabel} of ${reviewPeriodStart}: ${stats.loggedDays}/${daysTotal} days logged (${loggedPct}%). Avg score ${stats.avgScore}. Avg sleep ${stats.avgSleep}h, steps ${typeof stats.avgSteps === 'number' ? stats.avgSteps.toLocaleString() : stats.avgSteps}. Workouts ${stats.workoutDays}, runs ${stats.runDays}, pages ${stats.totalPages}. ${netLabel}${focusSummary}`;
+  }, [reviewType, reviewPeriodStart, stats, focusHabit]);
+
+  const promptSuggestions = useMemo(() => {
+    const prompts = [];
+    if (stats.avgScore < 60) {
+      prompts.push('What was the biggest blocker this period, and how do you remove it?');
+    }
+    if (stats.focusHabitPct !== null && stats.focusHabitPct < 50) {
+      prompts.push(`Why did you miss your focus habit (${focusHabit}) this period?`);
+    }
+    if (stats.net < 0) {
+      prompts.push('Which spending category surprised you, and what rule will you set?');
+    }
+    if (stats.loggedDays < (reviewType === 'weekly' ? 5 : 20)) {
+      prompts.push('What would make logging easier next period?');
+    }
+    if (prompts.length < 3) {
+      prompts.push('What is the single highest‑leverage change for next period?');
+    }
+    return prompts.slice(0, 3);
+  }, [stats, focusHabit, reviewType]);
 
   return (
     <div className="space-y-6 pb-24">
@@ -245,9 +277,39 @@ const ReviewPage = ({
         </div>
       </Card>
 
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-slate-400 text-sm">Auto Summary</h3>
+          <Button
+            variant="secondary"
+            className="px-3 py-2"
+            onClick={() => {
+              setReviewSeed({ summary: autoSummary });
+              setShowReviewForm(true);
+            }}
+          >
+            Use in Review
+          </Button>
+        </div>
+        <p className="text-slate-300 text-sm leading-relaxed">{autoSummary}</p>
+        <div className="mt-3 space-y-2">
+          {promptSuggestions.map((prompt) => (
+            <div key={prompt} className="text-xs text-slate-500">
+              - {prompt}
+            </div>
+          ))}
+        </div>
+      </Card>
+
       {existingReview && (
         <Card className="p-4">
           <h3 className="font-semibold text-white mb-3">Your Reflection</h3>
+          {existingReview.summary && (
+            <div className="mb-3">
+              <div className="text-amber-400 text-xs mb-1">Summary</div>
+              <div className="text-slate-300 text-sm whitespace-pre-wrap">{existingReview.summary}</div>
+            </div>
+          )}
           {existingReview.win && (
             <div className="mb-3">
               <div className="text-amber-400 text-xs mb-1">Biggest win</div>
@@ -286,7 +348,7 @@ const ReviewPage = ({
       >
         <ReviewForm
           type={reviewType}
-          initial={existingReview}
+          initial={existingReview || reviewSeed || { summary: autoSummary }}
           onSave={(data) => {
             setReviews(prev => ({
               ...prev,
@@ -297,6 +359,7 @@ const ReviewPage = ({
                 savedAt: getToday()
               }
             }));
+            setReviewSeed(null);
             setShowReviewForm(false);
           }}
         />
@@ -306,6 +369,7 @@ const ReviewPage = ({
 };
 
 const ReviewForm = ({ type, initial, onSave }) => {
+  const [summary, setSummary] = useState(initial?.summary || '');
   const [win, setWin] = useState(initial?.win || '');
   const [lesson, setLesson] = useState(initial?.lesson || '');
   const [standard, setStandard] = useState(initial?.standard || '');
@@ -313,6 +377,16 @@ const ReviewForm = ({ type, initial, onSave }) => {
 
   return (
     <div className="space-y-4">
+      <div>
+        <label className="text-amber-400 text-sm mb-2 block">Summary</label>
+        <textarea
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          placeholder="Auto summary or your own..."
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white resize-none focus:outline-none focus:border-amber-500/50"
+          rows={3}
+        />
+      </div>
       <div>
         <label className="text-amber-400 text-sm mb-2 block">Biggest win?</label>
         <textarea
@@ -357,7 +431,7 @@ const ReviewForm = ({ type, initial, onSave }) => {
       )}
       <Button
         className="w-full"
-        onClick={() => onSave({ win, lesson, standard, yearReflection })}
+        onClick={() => onSave({ summary, win, lesson, standard, yearReflection })}
       >
         Save Review
       </Button>
