@@ -165,16 +165,16 @@ const MoneyPage = ({ transactions, setTransactions }) => {
         <h3 className="text-slate-400 text-sm mb-3">{formatMonthLabel(selectedMonth)}</h3>
         <div className="grid grid-cols-3 gap-3 text-center mb-4">
           <div>
-            <div className="text-emerald-400 text-2xl font-bold">${monthlyStats.income.toFixed(0)}</div>
+            <div className="text-emerald-400 text-2xl font-bold">€{monthlyStats.income.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Income</div>
           </div>
           <div>
-            <div className="text-red-400 text-2xl font-bold">${monthlyStats.expenses.toFixed(0)}</div>
+            <div className="text-red-400 text-2xl font-bold">€{monthlyStats.expenses.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Expenses</div>
           </div>
           <div>
             <div className={`text-2xl font-bold ${monthlyStats.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {monthlyStats.net >= 0 ? '+' : '-'}${Math.abs(monthlyStats.net).toFixed(0)}
+              {monthlyStats.net >= 0 ? '+' : '-'}€{Math.abs(monthlyStats.net).toFixed(0)}
             </div>
             <div className="text-slate-500 text-xs">{monthlyStats.net >= 0 ? 'Saved' : 'Overspent'}</div>
           </div>
@@ -200,9 +200,9 @@ const MoneyPage = ({ transactions, setTransactions }) => {
             </div>
             <div className="text-center mt-2 text-sm">
               {monthlyStats.net >= 0 ? (
-                <span className="text-emerald-400">Nice! You saved ${monthlyStats.net.toFixed(2)} this month.</span>
+                <span className="text-emerald-400">Nice! You saved €{monthlyStats.net.toFixed(2)} this month.</span>
               ) : (
-                <span className="text-red-400">Warning: You overspent by ${Math.abs(monthlyStats.net).toFixed(2)}.</span>
+                <span className="text-red-400">Warning: You overspent by €{Math.abs(monthlyStats.net).toFixed(2)}.</span>
               )}
             </div>
           </div>
@@ -219,7 +219,7 @@ const MoneyPage = ({ transactions, setTransactions }) => {
                 <div key={category}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-slate-300">{category}</span>
-                    <span className="text-slate-400">${amount.toFixed(0)} ({percentage.toFixed(0)}%)</span>
+                    <span className="text-slate-400">€{amount.toFixed(0)} ({percentage.toFixed(0)}%)</span>
                   </div>
                   <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                     <div
@@ -244,7 +244,7 @@ const MoneyPage = ({ transactions, setTransactions }) => {
                 <div key={category}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-slate-300">{category}</span>
-                    <span className="text-slate-400">${amount.toFixed(0)} ({percentage.toFixed(0)}%)</span>
+                    <span className="text-slate-400">€{amount.toFixed(0)} ({percentage.toFixed(0)}%)</span>
                   </div>
                   <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                     <div
@@ -263,16 +263,16 @@ const MoneyPage = ({ transactions, setTransactions }) => {
         <h3 className="text-slate-400 text-sm mb-3">Yearly Overview ({new Date().getFullYear()})</h3>
         <div className="grid grid-cols-3 gap-3 text-center mb-4">
           <div>
-            <div className="text-emerald-400 text-lg font-bold">${yearlyStats.totalIncome.toFixed(0)}</div>
+            <div className="text-emerald-400 text-lg font-bold">€{yearlyStats.totalIncome.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Total Income</div>
           </div>
           <div>
-            <div className="text-red-400 text-lg font-bold">${yearlyStats.totalExpenses.toFixed(0)}</div>
+            <div className="text-red-400 text-lg font-bold">€{yearlyStats.totalExpenses.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Total Expenses</div>
           </div>
           <div>
             <div className={`text-lg font-bold ${yearlyStats.totalNet >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              ${Math.abs(yearlyStats.totalNet).toFixed(0)}
+              €{Math.abs(yearlyStats.totalNet).toFixed(0)}
             </div>
             <div className="text-slate-500 text-xs">{yearlyStats.totalNet >= 0 ? 'Net Saved' : 'Net Loss'}</div>
           </div>
@@ -285,7 +285,7 @@ const MoneyPage = ({ transactions, setTransactions }) => {
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(value, name) => [`$${value.toFixed(0)}`, name.charAt(0).toUpperCase() + name.slice(1)]}
+                formatter={(value, name) => [`€${value.toFixed(0)}`, name.charAt(0).toUpperCase() + name.slice(1)]}
               />
               <Bar dataKey="income" fill="#10b981" radius={[2, 2, 0, 0]} />
               <Bar dataKey="expenses" fill="#ef4444" radius={[2, 2, 0, 0]} />
@@ -319,7 +319,7 @@ const MoneyPage = ({ transactions, setTransactions }) => {
               <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
-                formatter={(value) => [`$${value.toFixed(0)}`, 'Net']}
+                formatter={(value) => [`€${value.toFixed(0)}`, 'Net']}
               />
               <Area
                 type="monotone"
@@ -347,7 +347,7 @@ const MoneyPage = ({ transactions, setTransactions }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-lg font-bold ${t.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                    {t.type === 'income' ? '+' : '-'}€{t.amount.toFixed(2)}
                   </span>
                   {t.category && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">

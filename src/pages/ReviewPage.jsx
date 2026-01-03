@@ -38,6 +38,7 @@ const ReviewPage = ({
     let waterTotal = 0, waterCount = 0;
     let pagesTotal = 0;
     let pushupsTotal = 0;
+    let squatsTotal = 0;
     let runDistanceTotal = 0;
     let workoutDays = 0, runDays = 0;
     let focusHabitDays = 0;
@@ -67,6 +68,7 @@ const ReviewPage = ({
       const sessionPages = sessionsByDate[dateStr] || 0;
       if (dayMetrics?.pages || sessionPages) pagesTotal += (dayMetrics?.pages || 0) + sessionPages;
       if (dayMetrics?.pushups) pushupsTotal += dayMetrics.pushups;
+      if (dayMetrics?.squats) squatsTotal += dayMetrics.squats;
       if (dayMetrics?.runDistance) runDistanceTotal += dayMetrics.runDistance;
 
       if (dayHabits?.workout) workoutDays++;
@@ -89,6 +91,7 @@ const ReviewPage = ({
       avgWater: waterCount ? (waterTotal / waterCount).toFixed(1) : 'n/a',
       totalPages: pagesTotal,
       totalPushups: pushupsTotal,
+      totalSquats: squatsTotal,
       totalRunDistance: runDistanceTotal,
       avgScore: scoreCount ? Math.round(scoreTotal / scoreCount) : 0,
       workoutDays,
@@ -117,8 +120,8 @@ const ReviewPage = ({
     const focusSummary = focusHabit && stats.focusHabitPct !== null
       ? ` Focus habit hit ${stats.focusHabitPct}%.`
       : '';
-    const netLabel = stats.net >= 0 ? `Saved $${stats.net.toFixed(0)}.` : `Overspent $${Math.abs(stats.net).toFixed(0)}.`;
-    return `${periodLabel} of ${reviewPeriodStart}: ${stats.loggedDays}/${daysTotal} days logged (${loggedPct}%). Avg score ${stats.avgScore}. Avg sleep ${stats.avgSleep}h, steps ${typeof stats.avgSteps === 'number' ? stats.avgSteps.toLocaleString() : stats.avgSteps}. Workouts ${stats.workoutDays}, runs ${stats.runDays}, pages ${stats.totalPages}. ${netLabel}${focusSummary}`;
+    const netLabel = stats.net >= 0 ? `Saved €${stats.net.toFixed(0)}.` : `Overspent €${Math.abs(stats.net).toFixed(0)}.`;
+    return `${periodLabel} of ${reviewPeriodStart}: ${stats.loggedDays}/${daysTotal} days logged (${loggedPct}%). Avg score ${stats.avgScore}. Avg sleep ${stats.avgSleep}h, steps ${typeof stats.avgSteps === 'number' ? stats.avgSteps.toLocaleString() : stats.avgSteps}. Workouts ${stats.workoutDays}, runs ${stats.runDays}, pages ${stats.totalPages}, push-ups ${stats.totalPushups}, squats ${stats.totalSquats}. ${netLabel}${focusSummary}`;
   }, [reviewType, reviewPeriodStart, stats, focusHabit]);
 
   const promptSuggestions = useMemo(() => {
@@ -201,6 +204,10 @@ const ReviewPage = ({
           <div className="text-2xl font-bold text-amber-400">{stats.totalPushups.toLocaleString()}</div>
         </Card>
         <Card className="p-4">
+          <div className="text-slate-400 text-sm">Squats</div>
+          <div className="text-2xl font-bold text-orange-400">{stats.totalSquats.toLocaleString()}</div>
+        </Card>
+        <Card className="p-4">
           <div className="text-slate-400 text-sm">Run Distance</div>
           <div className="text-2xl font-bold text-sky-400">{stats.totalRunDistance.toFixed(1)} km</div>
         </Card>
@@ -225,16 +232,16 @@ const ReviewPage = ({
         <h3 className="text-slate-400 text-sm mb-3">Money Summary</h3>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
-            <div className="text-emerald-400 text-xl font-bold">${stats.income.toFixed(0)}</div>
+            <div className="text-emerald-400 text-xl font-bold">€{stats.income.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Income</div>
           </div>
           <div>
-            <div className="text-red-400 text-xl font-bold">${stats.expenses.toFixed(0)}</div>
+            <div className="text-red-400 text-xl font-bold">€{stats.expenses.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Spent</div>
           </div>
           <div>
             <div className={`text-xl font-bold ${stats.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              ${Math.abs(stats.net).toFixed(0)}
+              €{Math.abs(stats.net).toFixed(0)}
             </div>
             <div className="text-slate-500 text-xs">Net</div>
           </div>

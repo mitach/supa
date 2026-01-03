@@ -186,6 +186,15 @@ const SettingsPage = ({
               className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
             />
           </div>
+          <div>
+            <label className="text-slate-400 text-sm mb-2 block">Squats Goal (daily)</label>
+            <input
+              type="number"
+              value={localGoals?.squats || 50}
+              onChange={(e) => setLocalGoals(prev => ({ ...prev, squats: Number(e.target.value) }))}
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
           <Button className="w-full" onClick={saveGoals}>
             Save Goals
           </Button>

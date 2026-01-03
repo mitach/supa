@@ -30,7 +30,7 @@ import { formatDate, generateId, getMonthStart, getToday, getWeekStart } from '.
     monthlyGoals: {},
     gameSessions: [],
     gameLimitMinutes: 420,
-    goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50 },
+    goals: { steps: 10000, water: 1.5, sleep: 7.5, pages: 20, pushups: 50, squats: 50 },
     focusHabit: 'workout',
     onboardingComplete: false,
     focusAlertLast: ''
@@ -843,6 +843,15 @@ export default function App() {
                 type="number"
                 value={onboardingGoals?.pushups || 50}
                 onChange={(e) => setOnboardingGoals(prev => ({ ...prev, pushups: Number(e.target.value) }))}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-sm mb-2 block">Squats Goal (daily)</label>
+              <input
+                type="number"
+                value={onboardingGoals?.squats || 50}
+                onChange={(e) => setOnboardingGoals(prev => ({ ...prev, squats: Number(e.target.value) }))}
                 className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
               />
             </div>

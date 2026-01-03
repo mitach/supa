@@ -30,6 +30,7 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
     let sleepCount = 0;
     let waterDays = 0;
     let pushupsTotal = 0;
+    let squatsTotal = 0;
     let workoutDays = 0;
     let runDays = 0;
     let runDistanceTotal = 0;
@@ -53,6 +54,9 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
       if (dayMetrics.pushups) {
         pushupsTotal += dayMetrics.pushups;
       }
+      if (dayMetrics.squats) {
+        squatsTotal += dayMetrics.squats;
+      }
       if (dayHabits.workout) workoutDays++;
       if (dayHabits.run) runDays++;
       if (dayMetrics.runDistance) runDistanceTotal += dayMetrics.runDistance;
@@ -63,6 +67,7 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
       avgSleep: sleepCount ? (sleepTotal / sleepCount).toFixed(1) : null,
       waterPct: Math.round((waterDays / 7) * 100),
       pushupsTotal,
+      squatsTotal,
       workoutDays,
       runDays,
       runDistanceTotal
@@ -121,6 +126,15 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
             value={todayMetrics.pushups}
             onChange={(v) => updateMetric('pushups', v)}
             placeholder="0"
+            goal={goals?.pushups || 50}
+            quickAdd={[10, 20, 50]}
+          />
+          <MetricInput
+            label="Squats"
+            value={todayMetrics.squats}
+            onChange={(v) => updateMetric('squats', v)}
+            placeholder="0"
+            goal={goals?.squats || 50}
             quickAdd={[10, 20, 50]}
           />
         </div>
@@ -175,6 +189,10 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
             <div className="text-slate-500 text-xs">Push-ups</div>
           </div>
           <div>
+            <div className="text-2xl font-bold text-orange-400">{weekStats.squatsTotal}</div>
+            <div className="text-slate-500 text-xs">Squats</div>
+          </div>
+          <div>
             <div className="text-2xl font-bold text-emerald-400">{weekStats.workoutDays}</div>
             <div className="text-slate-500 text-xs">Workout Days</div>
           </div>
@@ -225,6 +243,10 @@ const BodyPage = ({ metrics, setMetrics, habits, setHabits, goals }) => {
           <div className="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2">
             <span className="text-slate-300">Push-ups</span>
             <span className="text-white">{historyMetrics.pushups ?? 'n/a'}</span>
+          </div>
+          <div className="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2">
+            <span className="text-slate-300">Squats</span>
+            <span className="text-white">{historyMetrics.squats ?? 'n/a'}</span>
           </div>
           <div className="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2">
             <span className="text-slate-300">Workout</span>

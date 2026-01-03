@@ -255,6 +255,15 @@ const TodayPage = ({
             value={todayMetrics.pushups}
             onChange={(v) => updateMetric('pushups', v)}
             placeholder="0"
+            goal={goals?.pushups || 50}
+            quickAdd={[10, 20, 50]}
+          />
+          <MetricInput
+            label="Squats"
+            value={todayMetrics.squats}
+            onChange={(v) => updateMetric('squats', v)}
+            placeholder="0"
+            goal={goals?.squats || 50}
             quickAdd={[10, 20, 50]}
           />
         </div>
@@ -399,11 +408,11 @@ const TodayPage = ({
         <div className="grid grid-cols-2 gap-3">
           <Card className="p-4">
             <div className="text-slate-400 text-sm mb-1">Spent Today</div>
-            <div className="text-2xl font-bold text-red-400">${todaySpend.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-400">€{todaySpend.toFixed(2)}</div>
           </Card>
           <Card className="p-4">
             <div className="text-slate-400 text-sm mb-1">Earned Today</div>
-            <div className="text-2xl font-bold text-emerald-400">${todayIncome.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-emerald-400">€{todayIncome.toFixed(2)}</div>
           </Card>
         </div>
         <div className="grid grid-cols-2 gap-3">

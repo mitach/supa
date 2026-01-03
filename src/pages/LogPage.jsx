@@ -197,22 +197,23 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                 { key: 'sleep', label: 'Sleep', unit: 'h', icon: <Icons.Moon /> },
                 { key: 'pages', label: 'Pages', icon: <Icons.Book /> },
                 { key: 'pushups', label: 'Push-ups', icon: <Icons.Dumbbell /> },
+                { key: 'squats', label: 'Squats', icon: <Icons.Dumbbell /> },
               ].map(({ key, label, unit, icon }) => (
                 <div key={key} className="bg-slate-900/50 rounded-xl p-3">
                   <div className="flex items-center gap-2 text-slate-400 text-sm mb-1">
                     {icon} {label}
                   </div>
-                  <div className="text-xl font-bold text-white">
-                    {key === 'pages'
-                      ? dayPagesTotal || 'n/a'
-                      : key === 'water'
-                        ? dayMetrics.water != null ? 'Yes' : 'n/a'
-                        : dayMetrics[key] ?? 'n/a'}
-                    {unit && dayMetrics[key] ? unit : ''}
-                  </div>
+                <div className="text-xl font-bold text-white">
+                  {key === 'pages'
+                    ? dayPagesTotal || 'n/a'
+                    : key === 'water'
+                      ? dayMetrics.water != null ? 'Yes' : 'n/a'
+                      : dayMetrics[key] ?? 'n/a'}
+                  {unit && dayMetrics[key] ? unit : ''}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
 
             <div className="space-y-2 mb-4">
               {[
@@ -341,6 +342,12 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                   label="Push-ups"
                   value={editMetrics.pushups}
                   onChange={(v) => setEditMetrics(prev => ({ ...prev, pushups: v }))}
+                  placeholder="0"
+                />
+                <MetricInput
+                  label="Squats"
+                  value={editMetrics.squats}
+                  onChange={(v) => setEditMetrics(prev => ({ ...prev, squats: v }))}
                   placeholder="0"
                 />
               </div>

@@ -49,6 +49,7 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
         sleep: dayMetrics.sleep || 0,
         pages: metricsWithPages.pages,
         pushups: dayMetrics.pushups || 0,
+        squats: dayMetrics.squats || 0,
         runDistance: dayMetrics.runDistance || 0,
         nofap: dayHabits.nofap ? 1 : 0,
         workout: dayHabits.workout ? 1 : 0,
@@ -99,6 +100,37 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
     Object.keys(metrics).forEach(date => {
       if (date >= yearStart && date <= today && metrics[date]?.pushups) {
         ytdTotal += metrics[date].pushups;
+        ytdDaysWithData++;
+      }
+    });
+
+    const ytdAvgPerDay = daysInYearSoFar > 0 ? (ytdTotal / daysInYearSoFar).toFixed(1) : 0;
+
+    return {
+      periodTotal,
+      ytdTotal,
+      ytdAvgPerDay,
+      daysInYearSoFar
+    };
+  }, [chartData, metrics]);
+
+  const squatStats = useMemo(() => {
+    const periodTotal = chartData.reduce((sum, d) => sum + d.squats, 0);
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = `${currentYear}-01-01`;
+    const today = getToday();
+
+    let ytdTotal = 0;
+    let ytdDaysWithData = 0;
+
+    const startOfYear = new Date(currentYear, 0, 1);
+    const now = new Date();
+    const daysInYearSoFar = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+
+    Object.keys(metrics).forEach(date => {
+      if (date >= yearStart && date <= today && metrics[date]?.squats) {
+        ytdTotal += metrics[date].squats;
         ytdDaysWithData++;
       }
     });
@@ -480,6 +512,40 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
 
       <Card className="p-4">
         <div className="flex items-center gap-2 text-slate-400 mb-3">
+          <Icons.Dumbbell /> Squats
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <div className="text-3xl font-bold text-white">{squatStats.periodTotal.toLocaleString()}</div>
+            <div className="text-slate-500 text-xs">{rangeConfig[range].label}</div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-orange-400">{squatStats.ytdTotal.toLocaleString()}</div>
+            <div className="text-slate-500 text-xs">Year to Date</div>
+          </div>
+        </div>
+        <div className="bg-slate-900/50 rounded-xl p-3 mb-3">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-sm">Daily avg (YTD)</span>
+            <span className="text-white font-semibold">{squatStats.ytdAvgPerDay} / day</span>
+          </div>
+        </div>
+        <div className="h-24">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData.slice(-14)}>
+              <XAxis dataKey="label" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} interval={1} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
+                labelStyle={{ color: '#94a3b8' }}
+              />
+              <Bar dataKey="squats" fill="#fb923c" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2 text-slate-400 mb-3">
           <Icons.Activity /> Run Distance
         </div>
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -570,16 +636,16 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
         <h3 className="text-slate-400 text-sm mb-4">Money ({rangeConfig[range].label})</h3>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
-            <div className="text-emerald-400 text-xl font-bold">${moneyStats.income.toFixed(0)}</div>
+            <div className="text-emerald-400 text-xl font-bold">€{moneyStats.income.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Income</div>
           </div>
           <div>
-            <div className="text-red-400 text-xl font-bold">${moneyStats.expenses.toFixed(0)}</div>
+            <div className="text-red-400 text-xl font-bold">€{moneyStats.expenses.toFixed(0)}</div>
             <div className="text-slate-500 text-xs">Expenses</div>
           </div>
           <div>
             <div className={`text-xl font-bold ${moneyStats.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              ${Math.abs(moneyStats.net).toFixed(0)}
+              €{Math.abs(moneyStats.net).toFixed(0)}
             </div>
             <div className="text-slate-500 text-xs">Net</div>
           </div>

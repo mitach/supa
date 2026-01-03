@@ -28,6 +28,7 @@ const calculateDailyScore = (dayMetrics, dayHabits, goals, dayJournal) => {
     { key: 'sleep', label: 'Sleep', goal: goals?.sleep || 7.5, points: 8 },
     { key: 'pages', label: 'Reading', goal: goals?.pages || 20, points: 8 },
     { key: 'pushups', label: 'Push-ups', goal: goals?.pushups || 50, points: 8 },
+    { key: 'squats', label: 'Squats', goal: goals?.squats || 50, points: 8 },
   ];
 
   metrics.forEach(({ key, label, goal, points }) => {
