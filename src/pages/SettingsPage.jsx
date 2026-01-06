@@ -45,8 +45,6 @@ const SettingsPage = ({
     { value: 'nofap', label: 'NoFap' },
     { value: 'workout', label: 'Workout' },
     { value: 'run', label: 'Run' },
-    { value: 'keptWord', label: 'Kept my word' },
-    { value: 'hardThing', label: 'Did a hard thing' },
     { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
   ];
 

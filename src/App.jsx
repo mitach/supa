@@ -153,8 +153,6 @@ export default function App() {
       'nofap',
       'workout',
       'run',
-      'keptWord',
-      'hardThing',
       'healthyEating'
     ]);
     const nextFocusHabit = allowedFocusHabits.has(merged.focusHabit)
@@ -790,7 +788,7 @@ export default function App() {
       </Modal>
 
       <Modal
-        isOpen={!onboardingComplete}
+        isOpen={isHydrated && !onboardingComplete}
         onClose={() => {}}
         title="Quick Setup"
       >
@@ -866,8 +864,6 @@ export default function App() {
                   { value: 'nofap', label: 'NoFap' },
                   { value: 'workout', label: 'Workout' },
                   { value: 'run', label: 'Run' },
-                  { value: 'keptWord', label: 'Kept my word' },
-                  { value: 'hardThing', label: 'Did a hard thing' },
                   { value: 'healthyEating', label: 'Ate healthy (no sugar)' }
                 ].map((habit) => (
                   <option key={habit.value} value={habit.value}>

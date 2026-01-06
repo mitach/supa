@@ -5,10 +5,6 @@ const calculateDailyScore = (dayMetrics, dayHabits, goals, dayJournal) => {
 
   const habits = [
     { key: 'nofap', label: 'NoFap', points: 10 },
-    { key: 'workout', label: 'Workout', points: 10 },
-    { key: 'run', label: 'Run', points: 10 },
-    { key: 'keptWord', label: 'Kept Word', points: 10 },
-    { key: 'hardThing', label: 'Hard Thing', points: 10 },
     { key: 'healthyEating', label: 'Healthy Eating', points: 10 },
   ];
 
@@ -21,6 +17,19 @@ const calculateDailyScore = (dayMetrics, dayHabits, goals, dayJournal) => {
       breakdown.push({ label, earned: 0, max: points, percent: 0 });
     }
   });
+
+  const activityPoints = 10;
+  maxScore += activityPoints;
+  const didActivity = Boolean(dayHabits?.workout || dayHabits?.run);
+  breakdown.push({
+    label: 'Workout or Run',
+    earned: didActivity ? activityPoints : 0,
+    max: activityPoints,
+    percent: didActivity ? 100 : 0
+  });
+  if (didActivity) {
+    score += activityPoints;
+  }
 
   const metrics = [
     { key: 'steps', label: 'Steps', goal: goals?.steps || 10000, points: 8 },
@@ -54,12 +63,20 @@ const calculateDailyScore = (dayMetrics, dayHabits, goals, dayJournal) => {
     }
   }
 
+  const safeMax = maxScore || 1;
+  const scale = 100 / safeMax;
+  const scaledScore = Math.round(score * scale);
+  const scaledBreakdown = breakdown.map(item => ({
+    ...item,
+    earned: Math.round((item.earned || 0) * scale * 10) / 10,
+    max: item.max ? Math.round(item.max * scale * 10) / 10 : item.max
+  }));
   return {
-    score: Math.round(score),
-    maxScore,
-    percent: Math.round((score / maxScore) * 100),
-    breakdown,
-    grade: score >= 90 ? 'S' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : score >= 50 ? 'D' : 'F'
+    score: scaledScore,
+    maxScore: 100,
+    percent: Math.round((score / safeMax) * 100),
+    breakdown: scaledBreakdown,
+    grade: scaledScore >= 90 ? 'S' : scaledScore >= 80 ? 'A' : scaledScore >= 70 ? 'B' : scaledScore >= 60 ? 'C' : scaledScore >= 50 ? 'D' : 'F'
   };
 };
 

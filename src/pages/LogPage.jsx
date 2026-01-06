@@ -220,8 +220,6 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                 { key: 'nofap', label: 'NoFap' },
                 { key: 'workout', label: 'Workout' },
                 { key: 'run', label: 'Run' },
-                { key: 'keptWord', label: 'Kept Word' },
-                { key: 'hardThing', label: 'Hard Thing' },
                 { key: 'healthyEating', label: 'Ate healthy (no sugar)' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
@@ -380,16 +378,6 @@ const LogPage = ({ metrics, setMetrics, habits, setHabits, journals, setJournals
                     unit="km"
                   />
                 )}
-                <HabitToggle
-                  label="Kept my word"
-                  value={editHabits.keptWord}
-                  onChange={(v) => setEditHabits(prev => ({ ...prev, keptWord: v }))}
-                />
-                <HabitToggle
-                  label="Did a hard thing voluntarily"
-                  value={editHabits.hardThing}
-                  onChange={(v) => setEditHabits(prev => ({ ...prev, hardThing: v }))}
-                />
                 <HabitToggle
                   label="Ate healthy (no sugar)"
                   value={editHabits.healthyEating}

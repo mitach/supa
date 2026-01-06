@@ -195,8 +195,6 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
     const days = rangeConfig[range].days;
     let workoutDays = 0;
     let runDays = 0;
-    let keptWordDays = 0;
-    let hardThingDays = 0;
     let healthyEatingDays = 0;
     let focusHabitDays = 0;
     let loggedDays = 0;
@@ -208,8 +206,6 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
         loggedDays++;
         if (dayHabits.workout) workoutDays++;
         if (dayHabits.run) runDays++;
-        if (dayHabits.keptWord) keptWordDays++;
-        if (dayHabits.hardThing) hardThingDays++;
         if (dayHabits.healthyEating) healthyEatingDays++;
         if (focusHabit && dayHabits[focusHabit]) focusHabitDays++;
       }
@@ -221,8 +217,6 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
     return {
       workout: pct(workoutDays),
       run: pct(runDays),
-      keptWord: pct(keptWordDays),
-      hardThing: pct(hardThingDays),
       healthyEating: pct(healthyEatingDays),
       focusPct,
       loggedDays
@@ -584,8 +578,6 @@ const AnalyticsPage = ({ metrics, habits, transactions, goals, focusHabit, readi
           {[
             { key: 'workout', label: 'Workout', value: habitStats.workout },
             { key: 'run', label: 'Run', value: habitStats.run },
-            { key: 'keptWord', label: 'Kept Word', value: habitStats.keptWord },
-            { key: 'hardThing', label: 'Hard Thing', value: habitStats.hardThing },
             { key: 'healthyEating', label: 'Ate healthy (no sugar)', value: habitStats.healthyEating },
           ].map(({ key, label, value }) => (
             <div key={key}>

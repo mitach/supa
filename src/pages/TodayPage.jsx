@@ -307,18 +307,6 @@ const TodayPage = ({
             />
           )}
           <HabitToggle
-            label="Kept my word"
-            value={todayHabits.keptWord}
-            onChange={(v) => updateHabit('keptWord', v)}
-            isFocus={focusHabit === 'keptWord'}
-          />
-          <HabitToggle
-            label="Did a hard thing voluntarily"
-            value={todayHabits.hardThing}
-            onChange={(v) => updateHabit('hardThing', v)}
-            isFocus={focusHabit === 'hardThing'}
-          />
-          <HabitToggle
             label="Ate healthy (no sugar)"
             value={todayHabits.healthyEating}
             onChange={(v) => updateHabit('healthyEating', v)}

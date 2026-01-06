@@ -16,7 +16,9 @@ const ScoreBreakdownModal = ({ isOpen, onClose, score, date }) => {
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Habits (60 pts max)</h4>
+          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            Habits ({score.breakdown.filter(b => !b.goal && !b.isBonus).reduce((sum, b) => sum + (b.max || 0), 0).toFixed(0)} pts max)
+          </h4>
           <div className="space-y-2">
             {score.breakdown.filter(b => !b.goal && !b.isBonus).map((item, i) => (
               <div key={i} className="flex items-center justify-between py-2 px-3 bg-slate-800/30 rounded-lg">
@@ -35,7 +37,9 @@ const ScoreBreakdownModal = ({ isOpen, onClose, score, date }) => {
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Metrics (40 pts max)</h4>
+          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            Metrics ({score.breakdown.filter(b => b.goal !== undefined).reduce((sum, b) => sum + (b.max || 0), 0).toFixed(0)} pts max)
+          </h4>
           <div className="space-y-2">
             {score.breakdown.filter(b => b.goal !== undefined).map((item, i) => (
               <div key={i} className="py-2 px-3 bg-slate-800/30 rounded-lg">

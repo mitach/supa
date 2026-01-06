@@ -54,8 +54,6 @@ const CorePage = ({
   const weekStats = useMemo(() => {
     const counts = {
       nofap: 0,
-      keptWord: 0,
-      hardThing: 0,
       healthyEating: 0,
       focus: 0
     };
@@ -64,8 +62,6 @@ const CorePage = ({
       const date = getDaysAgo(i);
       const dayHabits = habits[date] || {};
       if (dayHabits.nofap) counts.nofap++;
-      if (dayHabits.keptWord) counts.keptWord++;
-      if (dayHabits.hardThing) counts.hardThing++;
       if (dayHabits.healthyEating) counts.healthyEating++;
       if (focusHabit && dayHabits[focusHabit]) counts.focus++;
     }
@@ -341,18 +337,6 @@ const CorePage = ({
           isFocus={focusHabit === 'nofap'}
         />
         <HabitToggle
-          label="Kept my word"
-          value={todayHabits.keptWord}
-          onChange={(v) => updateHabit('keptWord', v)}
-          isFocus={focusHabit === 'keptWord'}
-        />
-        <HabitToggle
-          label="Did a hard thing voluntarily"
-          value={todayHabits.hardThing}
-          onChange={(v) => updateHabit('hardThing', v)}
-          isFocus={focusHabit === 'hardThing'}
-        />
-        <HabitToggle
           label="Ate healthy (no sugar)"
           value={todayHabits.healthyEating}
           onChange={(v) => updateHabit('healthyEating', v)}
@@ -425,14 +409,6 @@ const CorePage = ({
             <div className="text-slate-500 text-xs">NoFap Days</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-emerald-400">{weekStats.keptWord}</div>
-            <div className="text-slate-500 text-xs">Kept Word</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-violet-400">{weekStats.hardThing}</div>
-            <div className="text-slate-500 text-xs">Hard Things</div>
-          </div>
-          <div>
             <div className="text-2xl font-bold text-sky-400">{weekStats.healthyEating}</div>
             <div className="text-slate-500 text-xs">Healthy Eating</div>
           </div>
@@ -462,8 +438,6 @@ const CorePage = ({
         <div className="grid grid-cols-2 gap-3 text-sm mt-3">
           {[
             { key: 'nofap', label: 'NoFap' },
-            { key: 'keptWord', label: 'Kept Word' },
-            { key: 'hardThing', label: 'Hard Thing' },
             { key: 'healthyEating', label: 'Healthy Eating' },
           ].map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2">
