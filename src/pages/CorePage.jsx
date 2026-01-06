@@ -69,6 +69,16 @@ const CorePage = ({
     return counts;
   }, [habits, focusHabit]);
 
+  const yearProgress = useMemo(() => {
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const nextYearStart = new Date(now.getFullYear() + 1, 0, 1);
+    const elapsedDays = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = Math.round((nextYearStart - yearStart) / (1000 * 60 * 60 * 24));
+    const percent = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+    return { percent, elapsedDays, totalDays };
+  }, []);
+
   const historyDates = useMemo(() => {
     const year = new Date().getFullYear();
     return Array.from({ length: 14 }, (_, i) => getDaysAgo(i))
@@ -137,6 +147,19 @@ const CorePage = ({
         >
           Edit Past Days
         </Button>
+      </div>
+
+      <div className="px-1">
+        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+          <span>Year</span>
+          <span>{yearProgress.percent}%</span>
+        </div>
+        <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-amber-400 rounded-full"
+            style={{ width: `${yearProgress.percent}%` }}
+          />
+        </div>
       </div>
 
       <Card className="p-4 space-y-3">
